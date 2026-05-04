@@ -8,6 +8,7 @@
     "verify": "tsx scripts/verify-tx.ts"
   },
   "dependencies": {
+    "@harmoniclabs/pair": "^1.0.0",
     "@meshsdk/core": "1.8.4",
     "dotenv": "16.4.5"
   },
@@ -17,11 +18,10 @@
     "typescript": "5.5.3"
   },
   "overrides": {
-  "libsodium-wrappers-sumo": "0.8.0",
-  "libsodium-sumo": "0.8.0"
+    "libsodium-wrappers-sumo": "0.8.0",
+    "libsodium-sumo": "0.8.0"
   },
   "engines": {
     "node": ">=18.0.0"
   }
-  
 }
