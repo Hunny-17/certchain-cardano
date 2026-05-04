@@ -70,6 +70,9 @@ Vietnam graduates ~600,000 students per year, with **thousands of fake diploma c
 ![CertChain Metadata On-Chain](docs/screenshots/m1-metadata.png)
 *CIP-20 metadata stored immutably*
 
+![UTXO Flow](docs/screenshots/m1-utxos.png)
+*Transaction inputs and outputs (UTXO model)*
+
 ---
 
 ## 🛠️ Tech Stack
