@@ -1,0 +1,27 @@
+{
+  "name": "certchain-poc",
+  "version": "0.1.0",
+  "description": "CertChain POC - Cardano metadata transaction submission",
+  "type": "module",
+  "scripts": {
+    "hello": "tsx scripts/hello-cardano.ts",
+    "verify": "tsx scripts/verify-tx.ts"
+  },
+  "dependencies": {
+    "@meshsdk/core": "1.8.4",
+    "dotenv": "16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "tsx": "4.16.2",
+    "typescript": "5.5.3"
+  },
+  "overrides": {
+  "libsodium-wrappers-sumo": "0.8.0",
+  "libsodium-sumo": "0.8.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+  
+}
