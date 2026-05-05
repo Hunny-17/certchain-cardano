@@ -1,51 +1,96 @@
-import { ArrowRight, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export default function Hero() {
   return (
-    <section className="relative pt-32 pb-24 px-6 overflow-hidden">
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-cardano-blue/20 rounded-full blur-[120px]" />
-        <div className="absolute top-40 right-1/4 w-[400px] h-[400px] bg-cardano-teal/15 rounded-full blur-[100px]" />
+    <section className="border-b border-ink">
+      <div className="border-b border-ink px-6 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between font-mono text-xs">
+          <span className="text-ink-muted">→ M1.POC.CONFIRMED · CARDANO PREPROD · BLOCK 12,847,201</span>
+          <span className="text-ink-muted hidden md:inline">[2026.05.04 · 23:47 GMT+7]</span>
+        </div>
       </div>
 
-      <div className="max-w-5xl mx-auto text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-8">
-          <ShieldCheck className="w-4 h-4 text-cardano-teal" />
-          <span className="text-xs font-medium text-white/80">Live trên Cardano Preprod • M1 POC đã verify</span>
-        </div>
-
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6">
-          Bằng cấp{' '}
-          <span className="bg-gradient-to-r from-cardano-blue via-cardano-teal to-cardano-blue bg-clip-text text-transparent">không thể giả mạo</span>
-          <br />
-          xác minh trong 2 giây.
-        </h1>
-
-        <p className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed">
-          CertChain phát hành bằng cấp giáo dục dưới dạng metadata bất biến trên blockchain Cardano. Nhà tuyển dụng quét QR — không cần công văn, không cần lãnh sự.
-        </p>
-
-        <div className="flex items-center justify-center gap-4 flex-wrap">
-          <Link to="/verify" className="group inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-bg-dark font-semibold hover:bg-white/90 transition">
-            Thử xác minh ngay
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
-          </Link>
-          <a href="#proof" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-white/15 text-white/90 hover:bg-white/5 transition">
-            Xem chứng minh on-chain
-          </a>
-        </div>
-
-        <div className="grid grid-cols-3 gap-8 mt-20 max-w-3xl mx-auto">
-          {[
-            { value: '2s', label: 'Thời gian xác minh' },
-            { value: '1.500đ', label: 'Chi phí mỗi bằng' },
-            { value: '∞', label: 'Lưu trữ trên blockchain' },
-          ].map((stat) => (
-            <div key={stat.label}>
-              <div className="text-4xl md:text-5xl font-bold bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent">{stat.value}</div>
-              <div className="text-sm text-white/50 mt-2">{stat.label}</div>
+      <div className="max-w-7xl mx-auto px-6 py-16 md:py-24">
+        <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-end">
+          <div className="animate-reveal">
+            <div className="font-mono text-xs text-ink-muted mb-8 tracking-wide">
+              [01] / EDUCATIONAL CREDENTIALS / ON-CHAIN
             </div>
+            <h1 className="font-serif text-6xl md:text-8xl leading-[0.9] tracking-tight mb-8">
+              Diplomas
+              <br />
+              that <em className="italic" style={{ color: '#0033AD' }}>cannot</em>
+              <br />
+              be forged.
+            </h1>
+            <p className="text-lg leading-relaxed text-ink-muted max-w-md mb-10">
+              Issued on Cardano blockchain. Scan QR. Verified in 2 seconds. No paperwork. No legalization.
+            </p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Link to="/verify" className="group inline-flex items-center gap-2 bg-ink text-bg px-6 py-3 font-mono text-sm hover:bg-cardano-blue transition-colors">
+                <span>▶ VERIFY NOW</span>
+              </Link>
+              <a href="#how" className="inline-flex items-center gap-2 border border-ink px-6 py-3 font-mono text-sm hover:bg-ink hover:text-bg transition-colors">
+                HOW IT WORKS →
+              </a>
+            </div>
+          </div>
+
+          <div className="grid gap-3 animate-reveal" style={{ animationDelay: '0.2s' }}>
+            <div className="bg-ink text-bg p-5 font-mono">
+              <div className="flex items-center justify-between mb-3 text-[10px] opacity-60 uppercase tracking-widest">
+                <span>tx_hash · live on preprod</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                  CONFIRMED
+                </span>
+              </div>
+              <div className="text-[11px] break-all leading-relaxed">
+                fca1ed625512835fab7770da1e9063d394bc75908284c031b591ee49f5250851
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="border border-ink p-5 hover:bg-ink hover:text-bg transition-colors group cursor-default">
+                <div className="font-serif text-5xl leading-none">
+                  2<span className="text-2xl">s</span>
+                </div>
+                <div className="font-mono text-[10px] text-ink-muted group-hover:text-bg/70 mt-3 uppercase tracking-widest">
+                  verify_time
+                </div>
+              </div>
+              <div className="p-5" style={{ background: '#0033AD', color: '#FAFAF7' }}>
+                <div className="font-serif text-5xl leading-none">
+                  $0.05
+                </div>
+                <div className="font-mono text-[10px] opacity-70 mt-3 uppercase tracking-widest">
+                  cost_per_cert
+                </div>
+              </div>
+            </div>
+
+            <a href="https://preprod.cardanoscan.io/transaction/fca1ed625512835fab7770da1e9063d394bc75908284c031b591ee49f5250851" target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-ink-muted hover:text-ink underline underline-offset-4 decoration-1">
+              → view on cardanoscan ↗
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-ink py-4 overflow-hidden">
+        <div className="flex animate-marquee whitespace-nowrap font-mono text-sm">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <span key={i} className="flex items-center">
+              <span className="mx-8">→ ISSUER · NTU-VN</span>
+              <span className="mx-8 text-ink-muted">✕</span>
+              <span className="mx-8">HOLDER · STUDENT</span>
+              <span className="mx-8 text-ink-muted">✕</span>
+              <span className="mx-8">VERIFIER · EMPLOYER</span>
+              <span className="mx-8 text-ink-muted">✕</span>
+              <span className="mx-8">CHAIN · CARDANO PREPROD</span>
+              <span className="mx-8 text-ink-muted">✕</span>
+              <span className="mx-8">STANDARD · CIP-20 METADATA</span>
+              <span className="mx-8 text-ink-muted">✕</span>
+            </span>
           ))}
         </div>
       </div>

@@ -1,45 +1,60 @@
-import { CheckCircle2, XCircle, ExternalLink } from 'lucide-react'
 import type { VerificationResult } from '../lib/blockfrost'
 
 export default function VerifyResult({ result }: { result: VerificationResult }) {
   const success = result.isCertChain && result.metadata
 
   return (
-    <div className="mt-8">
-      <div className={`p-6 rounded-2xl border ${success ? 'bg-cardano-teal/5 border-cardano-teal/30' : 'bg-red-500/5 border-red-500/30'}`}>
-        <div className="flex items-start gap-4">
-          {success ? <CheckCircle2 className="w-8 h-8 text-cardano-teal shrink-0" /> : <XCircle className="w-8 h-8 text-red-400 shrink-0" />}
-          <div>
-            <h3 className="text-xl font-bold mb-1">{success ? 'Bằng cấp xác thực ✓' : 'Không xác minh được'}</h3>
-            <p className="text-sm text-white/70">
-              {success ? 'Transaction này được phát hành bởi một Issuer trên Cardano và chứa metadata CertChain hợp lệ.' : result.error || 'Có lỗi khi kiểm tra'}
-            </p>
-          </div>
+    <div className="mt-12">
+      <div className={`border border-ink p-6 ${success ? '' : 'bg-bg-secondary'}`} style={success ? { background: '#0033AD', color: '#FAFAF7' } : {}}>
+        <div className="font-mono text-xs uppercase tracking-widest opacity-70 mb-3">
+          {success ? '✓ VERIFICATION PASSED' : '✕ VERIFICATION FAILED'}
         </div>
+        <h3 className="font-serif text-3xl md:text-4xl leading-tight">
+          {success ? 'Authentic credential.' : 'Cannot verify this hash.'}
+        </h3>
+        {!success && (
+          <p className="font-mono text-xs text-ink-muted mt-3">{result.error || 'Unknown error'}</p>
+        )}
       </div>
 
       {success && result.metadata && (
-        <div className="mt-6 p-6 rounded-2xl bg-bg-card border border-white/10">
-          <h4 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4">Thông tin bằng</h4>
-
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
-            <Field label="Issuer" value={result.metadata.issuer?.name || result.metadata.issuer?.id} />
-            <Field label="Loại bằng" value={result.metadata.credential?.type} />
-            <Field label="Ngành" value={result.metadata.credential?.major} />
-            <Field label="GPA" value={result.metadata.credential?.gpa} />
-            <Field label="Ngày tốt nghiệp" value={result.metadata.credential?.graduation_date} />
-            {result.blockTime && <Field label="Thời gian on-chain" value={new Date(result.blockTime * 1000).toLocaleString('vi-VN')} />}
+        <div className="border-x border-b border-ink">
+          <div className="border-b border-ink p-6">
+            <div className="font-mono text-xs uppercase tracking-widest text-ink-muted mb-6">
+              [01] / Credential Details
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              <Field label="Issuer" value={result.metadata.issuer?.name || result.metadata.issuer?.id} />
+              <Field label="Type" value={result.metadata.credential?.type} />
+              <Field label="Major" value={result.metadata.credential?.major} />
+              <Field label="GPA" value={result.metadata.credential?.gpa} />
+              <Field label="Graduation" value={result.metadata.credential?.graduation_date} />
+              {result.blockTime && (
+                <Field label="On-chain at" value={new Date(result.blockTime * 1000).toLocaleString('en-US')} />
+              )}
+            </div>
           </div>
 
-          <div className="space-y-3 mb-6">
-            {result.metadata.credential?.name_hash && <HashRow label="Hash tên" value={result.metadata.credential.name_hash} />}
-            {result.metadata.credential?.student_id_hash && <HashRow label="Hash MSSV" value={result.metadata.credential.student_id_hash} />}
-            {result.metadata.credential?.doc_hash && <HashRow label="Hash tài liệu gốc" value={result.metadata.credential.doc_hash} />}
-          </div>
+          {(result.metadata.credential?.name_hash || result.metadata.credential?.student_id_hash || result.metadata.credential?.doc_hash) && (
+            <div className="border-b border-ink p-6 bg-bg-secondary">
+              <div className="font-mono text-xs uppercase tracking-widest text-ink-muted mb-4">
+                [02] / SHA-256 Hashes (Privacy-Preserving)
+              </div>
+              <div className="space-y-3">
+                {result.metadata.credential?.name_hash && <HashRow label="name_hash" value={result.metadata.credential.name_hash} />}
+                {result.metadata.credential?.student_id_hash && <HashRow label="student_id_hash" value={result.metadata.credential.student_id_hash} />}
+                {result.metadata.credential?.doc_hash && <HashRow label="doc_hash" value={result.metadata.credential.doc_hash} />}
+              </div>
+            </div>
+          )}
 
-          <a href={`https://preprod.cardanoscan.io/transaction/${result.txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-cardano-teal hover:underline">
-            Xem trên Cardanoscan
-            <ExternalLink className="w-3.5 h-3.5" />
+          <a
+            href={`https://preprod.cardanoscan.io/transaction/${result.txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block p-4 font-mono text-xs uppercase tracking-widest text-center hover:bg-ink hover:text-bg transition-colors"
+          >
+            → view full transaction on cardanoscan ↗
           </a>
         </div>
       )}
@@ -50,8 +65,8 @@ export default function VerifyResult({ result }: { result: VerificationResult })
 function Field({ label, value }: { label: string; value?: string }) {
   return (
     <div>
-      <div className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">{label}</div>
-      <div className="text-sm">{value || <span className="text-white/30">—</span>}</div>
+      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2">{label}</div>
+      <div className="text-base">{value || <span className="text-ink-muted">—</span>}</div>
     </div>
   )
 }
@@ -59,8 +74,8 @@ function Field({ label, value }: { label: string; value?: string }) {
 function HashRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">{label}</div>
-      <code className="block text-xs font-mono text-white/70 break-all p-2 rounded bg-bg-dark">{value}</code>
+      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">{label}</div>
+      <code className="block font-mono text-xs break-all bg-ink text-bg p-3">{value}</code>
     </div>
   )
 }

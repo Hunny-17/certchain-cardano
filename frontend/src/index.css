@@ -1,22 +1,54 @@
 @import "tailwindcss";
 
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @theme {
   --color-cardano-blue: #0033AD;
   --color-cardano-teal: #14b8a6;
-  --color-bg-dark: #0a0e1a;
-  --color-bg-card: #131829;
+  --color-bg: #FAFAF7;
+  --color-bg-secondary: #F0EFE8;
+  --color-ink: #0A0A0A;
+  --color-ink-muted: #6B6B6B;
+  --color-line: #0A0A0A;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 @layer base {
   body {
-    background: var(--color-bg-dark);
-    color: white;
+    background: var(--color-bg);
+    color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
-  
+
   html {
     scroll-behavior: smooth;
   }
+
+  ::selection {
+    background: var(--color-cardano-blue);
+    color: var(--color-bg);
+  }
+}
+
+/* Marquee animation cho ticker bottom */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+/* Subtle reveal cho elements khi scroll vào view */
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-reveal {
+  animation: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }

@@ -1,4 +1,3 @@
-import { CheckCircle2, ExternalLink, Copy } from 'lucide-react'
 import { useState } from 'react'
 
 export default function ProofSection() {
@@ -12,54 +11,60 @@ export default function ProofSection() {
   }
 
   return (
-    <section id="proof" className="py-24 px-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cardano-teal/10 border border-cardano-teal/30 mb-6">
-            <CheckCircle2 className="w-4 h-4 text-cardano-teal" />
-            <span className="text-xs font-medium text-cardano-teal">M1 POC Verified</span>
-          </div>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            Đây không phải concept.
-            <br />
-            Nó đã chạy.
-          </h2>
-          <p className="text-white/60 text-lg max-w-2xl mx-auto">
-            Transaction CertChain đầu tiên đã được submit lên Cardano Preprod ngày 04/05/2026. Bất kỳ ai cũng có thể xem.
-          </p>
+    <section id="proof" className="border-b border-ink">
+      <div className="border-b border-ink px-6 py-3">
+        <div className="max-w-7xl mx-auto font-mono text-xs text-ink-muted">
+          [03] / PROOF OF EXECUTION / ON-CHAIN
         </div>
+      </div>
 
-        <div className="p-8 rounded-2xl bg-gradient-to-br from-bg-card to-bg-dark border border-white/10">
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <div className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Network</div>
-              <div className="font-mono text-sm">Cardano Preprod Testnet</div>
+      <div className="max-w-7xl mx-auto px-6 py-16 md:py-24">
+        <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-start">
+          <div>
+            <div className="font-mono text-xs text-ink-muted mb-6 uppercase tracking-widest">
+              ✓ M1 milestone · 2026.05.04
             </div>
-            <div>
-              <div className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Standard</div>
-              <div className="font-mono text-sm">CIP-20 Transaction Metadata</div>
-            </div>
+            <h2 className="font-serif text-5xl md:text-7xl leading-[0.95] mb-8">
+              Not a concept.<br />
+              <em className="italic" style={{ color: '#0033AD' }}>It runs.</em>
+            </h2>
+            <p className="text-lg text-ink-muted leading-relaxed max-w-md">
+              The first CertChain transaction is live on Cardano Preprod. Anyone can verify it. The infrastructure works today, not in a roadmap slide.
+            </p>
           </div>
 
-          <div className="mb-6">
-            <div className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Transaction Hash</div>
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-bg-dark border border-white/5">
-              <code className="flex-1 text-xs font-mono text-cardano-teal break-all">{txHash}</code>
-              <button onClick={handleCopy} className="shrink-0 p-2 rounded-md hover:bg-white/5 transition" title="Copy">
-                {copied ? <CheckCircle2 className="w-4 h-4 text-cardano-teal" /> : <Copy className="w-4 h-4 text-white/60" />}
+          <div className="border border-ink">
+            <div className="border-b border-ink p-5 grid grid-cols-2 gap-6 font-mono text-xs">
+              <div>
+                <div className="text-ink-muted uppercase tracking-widest mb-2">Network</div>
+                <div>Cardano Preprod</div>
+              </div>
+              <div>
+                <div className="text-ink-muted uppercase tracking-widest mb-2">Standard</div>
+                <div>CIP-20 Metadata</div>
+              </div>
+            </div>
+
+            <div className="bg-ink text-bg p-5">
+              <div className="font-mono text-[10px] opacity-60 uppercase tracking-widest mb-3">
+                Transaction Hash
+              </div>
+              <div className="font-mono text-[11px] break-all leading-relaxed mb-4">
+                {txHash}
+              </div>
+              <button onClick={handleCopy} className="font-mono text-[10px] uppercase tracking-widest opacity-60 hover:opacity-100 transition-opacity">
+                {copied ? '✓ COPIED' : '⧉ COPY HASH'}
               </button>
             </div>
-          </div>
 
-          <div className="flex flex-wrap gap-3">
-            <a href={`https://preprod.cardanoscan.io/transaction/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-bg-dark text-sm font-semibold hover:bg-white/90 transition">
-              Cardanoscan
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-            <a href={`https://preprod.cexplorer.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/15 text-sm font-semibold hover:bg-white/5 transition">
-              Cexplorer
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+            <div className="grid grid-cols-2 border-t border-ink">
+              <a href={`https://preprod.cardanoscan.io/transaction/${txHash}`} target="_blank" rel="noopener noreferrer" className="border-r border-ink p-4 font-mono text-xs uppercase tracking-widest text-center hover:bg-ink hover:text-bg transition-colors">
+                Cardanoscan ↗
+              </a>
+              <a href={`https://preprod.cexplorer.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="p-4 font-mono text-xs uppercase tracking-widest text-center hover:bg-ink hover:text-bg transition-colors">
+                Cexplorer ↗
+              </a>
+            </div>
           </div>
         </div>
       </div>
