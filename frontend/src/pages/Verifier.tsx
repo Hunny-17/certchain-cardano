@@ -1,25 +1,66 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Scanner } from '@yudiel/react-qr-scanner'
 import Navbar from '../components/Navbar'
 import VerifyResult from '../components/VerifyResult'
 import { verifyTxHash, type VerificationResult } from '../lib/blockfrost'
+import { loadMockCredential, mockToVerificationResult } from '../lib/credentialStore'
+import { useParams } from "react-router-dom";
 
 type Mode = 'manual' | 'qr'
 
+const SAMPLE_HASH = 'fca1ed625512835fab7770da1e9063d394bc75908284c031b591ee49f5250851'
 export default function Verifier() {
+  const { txHash } = useParams<{ txHash?: string }>();
   const [mode, setMode] = useState<Mode>('manual')
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<VerificationResult | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  useEffect(() => {
+    if (txHash) {
+      setInput(txHash)
+      handleVerify(txHash)
+    }
+  }, [txHash])
 
   const handleVerify = async (hash: string) => {
-    if (!hash.trim()) return
+    const cleaned = hash.trim().toLowerCase()
+    if (!cleaned) return
+
+    // Preflight: Cardano tx hash must be 64 hex chars
+    if (!/^[a-f0-9]{64}$/.test(cleaned)) {
+      setResult({
+        txHash: cleaned,
+        isCertChain: false,
+        metadata: null,
+        error: 'Invalid format. Cardano transaction hash must be exactly 64 hexadecimal characters (0-9, a-f).'
+      })
+      return
+    }
+
     setLoading(true)
     setResult(null)
-    const res = await verifyTxHash(hash)
+
+    // V1 hybrid: check local mock store first.
+    // If user issued this credential via Issuer Portal → render from localStorage.
+    // Otherwise (e.g. M1 hash) → fallback to real Blockfrost query.
+    const localMock = loadMockCredential(cleaned)
+    if (localMock) {
+      // Small delay so loading panel is visible — feels intentional, not jarring.
+      await new Promise((r) => setTimeout(r, 600))
+      setResult(mockToVerificationResult(localMock))
+      setLoading(false)
+      return
+    }
+
+    const res = await verifyTxHash(cleaned)
     setResult(res)
     setLoading(false)
+  }
+
+  const loadSample = () => {
+    setInput(SAMPLE_HASH)
+    handleVerify(SAMPLE_HASH)
   }
 
   const handleQrScan = (detectedCodes: { rawValue: string }[]) => {
@@ -95,10 +136,67 @@ export default function Verifier() {
             <button
               onClick={() => handleVerify(input)}
               disabled={loading || !input.trim()}
-              className="w-full py-4 bg-ink text-bg font-mono text-sm uppercase tracking-widest hover:bg-cardano-blue disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-4 bg-ink text-bg font-mono text-sm uppercase tracking-widest hover:bg-cardano-blue disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-3"
             >
-              {loading ? '⟳ QUERYING BLOCKCHAIN...' : '▶ VERIFY'}
+              {loading ? (
+                <>
+                  <span className="inline-block animate-spin">⟳</span>
+                  <span>Querying blockchain...</span>
+                </>
+              ) : (
+                <span>▶ VERIFY</span>
+              )}
             </button>
+            
+            {/* Loading status panel */}
+            {loading && (
+              <div className="border border-ink mt-2 p-5 space-y-3 loading-pulse">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
+                    Network
+                  </span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: '#0033AD' }}>
+                    ● Cardano Preprod
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
+                    Provider
+                  </span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em]">
+                    Blockfrost API
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
+                    Operation
+                  </span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em]">
+                    Fetching CIP-20 metadata
+                  </span>
+                </div>
+                <div className="pt-3 border-t border-ink/20">
+                  <div className="font-mono text-[10px] text-ink-muted leading-relaxed">
+                    Querying transaction <code className="text-ink">{input.slice(0, 16)}...{input.slice(-8)}</code> on-chain. Typically resolves in 1-2 seconds.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Empty state — sample loader */}
+            {!loading && !result && (
+              <div className="pt-5 mt-2 border-t border-ink/20 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
+                  First time? Try our M1 on-chain proof
+                </div>
+                <button
+                  onClick={loadSample}
+                  className="font-mono text-[10px] uppercase tracking-[0.2em] underline underline-offset-4 hover:text-cardano-blue transition-colors text-left md:text-right shrink-0"
+                >
+                  → Load demo credential
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -133,6 +231,15 @@ export default function Verifier() {
 
         {result && <VerifyResult result={result} />}
       </div>
+      <style>{`
+        @keyframes loading-pulse {
+          0%, 100% { border-color: var(--ink, #000); }
+          50% { border-color: #0033AD; }
+        }
+        .loading-pulse {
+          animation: loading-pulse 1.4s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   )
 }
