@@ -26,12 +26,58 @@ export default function Hero() {
             <p className="text-lg leading-relaxed text-ink-muted max-w-md mb-10">
               Issued on Cardano blockchain. Scan QR. Verified in 2 seconds. No paperwork. No legalization.
             </p>
-            <div className="flex items-center gap-3 flex-wrap">
-              <Link to="/verify" className="group inline-flex items-center gap-2 bg-ink text-bg px-6 py-3 font-mono text-sm hover:bg-cardano-blue transition-colors">
-                <span>▶ VERIFY NOW</span>
+
+            {/* ============ PRIMARY CTAs — 2 audiences ============ */}
+            <div className="grid sm:grid-cols-2 gap-3 mb-4 max-w-xl">
+              <Link
+                to="/issue"
+                className="group block border-2 border-ink p-4 hover:bg-ink hover:text-bg transition-colors"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono text-sm uppercase tracking-[0.1em]">
+                    ▶ Issue
+                  </span>
+                  <span className="font-mono text-sm group-hover:translate-x-1 transition-transform">
+                    →
+                  </span>
+                </div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted group-hover:text-bg/70">
+                  For universities
+                </div>
               </Link>
-              <a href="#how" className="inline-flex items-center gap-2 border border-ink px-6 py-3 font-mono text-sm hover:bg-ink hover:text-bg transition-colors">
-                HOW IT WORKS →
+
+              <Link
+                to="/verify"
+                className="group block p-4 transition-colors hover:opacity-90"
+                style={{ background: '#0033AD', color: '#FAFAF7' }}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono text-sm uppercase tracking-[0.1em]">
+                    ⌗ Verify
+                  </span>
+                  <span className="font-mono text-sm group-hover:translate-x-1 transition-transform">
+                    →
+                  </span>
+                </div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.2em] opacity-70">
+                  For employers
+                </div>
+              </Link>
+            </div>
+
+            <div className="flex items-center gap-4 flex-wrap font-mono text-xs">
+              <Link
+                to="/pitch"
+                className="text-ink-muted hover:text-ink underline underline-offset-4 decoration-1 uppercase tracking-[0.15em]"
+              >
+                → View 10-slide pitch deck
+              </Link>
+              <span className="text-ink-muted hidden sm:inline">·</span>
+              <a
+                href="#how"
+                className="text-ink-muted hover:text-ink uppercase tracking-[0.15em]"
+              >
+                How it works ↓
               </a>
             </div>
           </div>
