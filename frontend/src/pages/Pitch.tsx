@@ -167,31 +167,32 @@ export default function Pitch() {
             <div className="grid md:grid-cols-3 gap-px bg-black border-2 border-black mb-10">
               <DataCell
                 num="2.2M"
-                label="Sinh viên ĐH-CĐ Việt Nam nhập học mỗi năm"
+                label="Vietnamese students enrolling every year"
               />
               <DataCell
                 num="235+"
-                label="Trường đại học cấp bằng độc lập"
+                label="Independent degree-issuing universities"
               />
               <DataCell
-                num="3-7 ngày"
-                label="Thời gian xác minh truyền thống"
+                num="3-7 days"
+                label="Traditional verification turnaround"
               />
             </div>
             <ul className="space-y-3 text-base md:text-lg max-w-3xl">
               <PainPoint>
-                Bằng cấp giấy dễ làm giả, không có cơ chế xác minh tức thời
+                Paper credentials are easy to forge, with no real-time
+                verification mechanism
               </PainPoint>
               <PainPoint>
-                Nhà tuyển dụng phải gọi điện / gửi email từng trường để xác
-                nhận
+                Employers must call or email each university individually to
+                confirm authenticity
               </PainPoint>
               <PainPoint>
-                Sinh viên mất bằng gốc → quy trình cấp lại tốn tuần, có thể
-                bị đánh cắp danh tính
+                Lost original certificate? Reissuance takes weeks and risks
+                identity theft
               </PainPoint>
               <PainPoint>
-                Hồ sơ tuyển dụng cross-border SEA gần như không kiểm chứng được
+                Cross-border SEA hiring records are practically unverifiable
               </PainPoint>
             </ul>
           </div>
