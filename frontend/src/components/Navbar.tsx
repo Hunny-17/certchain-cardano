@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 const NAV_LINKS = [
   { to: '/issue', label: 'Issuer', shortLabel: 'Issue' },
+  { to: '/holder', label: 'Holder', shortLabel: 'Holder' },
   { to: '/verify', label: 'Verifier', shortLabel: 'Verify' },
   { to: '/pitch', label: 'Pitch', shortLabel: 'Pitch' },
 ]

@@ -29,7 +29,7 @@ const roles: Role[] = [
     description:
       'Own credentials as portable QR codes. Share with employers via link or scan. No platform lock-in.',
     isAccent: true,
-    comingSoon: true,
+    href: '/holder',
     cta: 'Wallet — V2 milestone',
   },
   {
