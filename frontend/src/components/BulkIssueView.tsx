@@ -53,7 +53,6 @@ export default function BulkIssueView({
   onComplete: () => void;
 }) {
   const [phase, setPhase] = useState<Phase>("input");
-  const [csvText, setCsvText] = useState("");
   const [rows, setRows] = useState<CsvRow[]>([]);
   const [processed, setProcessed] = useState<ProcessedRow[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -99,7 +98,6 @@ export default function BulkIssueView({
 
   const loadSample = () => {
     const parsed = parseCsv(SAMPLE_TEMPLATE);
-    setCsvText(SAMPLE_TEMPLATE);
     setRows(parsed);
     setPhase("preview");
   };
@@ -109,7 +107,6 @@ export default function BulkIssueView({
     reader.onload = (e) => {
       const text = e.target?.result as string;
       const parsed = parseCsv(text);
-      setCsvText(text);
       setRows(parsed);
       setPhase("preview");
     };
@@ -216,7 +213,6 @@ export default function BulkIssueView({
   // ----------------------------------------------------------------------------
   const reset = () => {
     setPhase("input");
-    setCsvText("");
     setRows([]);
     setProcessed([]);
     setActiveIdx(0);

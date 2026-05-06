@@ -66,8 +66,7 @@ function AnonymousBanner({ allowedRoles }: { allowedRoles: UserRole[] }) {
 
   const handlePickRole = () => {
     setUserRole(primaryRole);
-    // Stay on current page — just adopt the role
-    window.location.reload();
+    navigate(getRoleHomeRoute(primaryRole));
   };
 
   return (
@@ -122,7 +121,7 @@ function AccessRestricted({
 
   const handleSwitch = (newRole: UserRole) => {
     setUserRole(newRole);
-    window.location.reload();
+    navigate(getRoleHomeRoute(newRole));
   };
 
   return (

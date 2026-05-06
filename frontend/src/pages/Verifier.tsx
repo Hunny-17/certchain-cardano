@@ -418,7 +418,7 @@ function VerifyHistory({ onReVerify }: { onReVerify: (hash: string) => void }) {
 
       {/* Log list */}
       <div className="border border-ink bg-white">
-        {logs.map((log, i) => (
+        {logs.map((log) => (
           <button
             key={log.txHash + log.verifiedAt}
             onClick={() => onReVerify(log.txHash)}
