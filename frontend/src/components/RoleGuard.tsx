@@ -25,7 +25,6 @@ interface RoleGuardProps {
 }
 
 export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
-  const navigate = useNavigate();
   const location = useLocation();
   const [role, setRole] = useState<UserRole | null | undefined>(undefined);
 
