@@ -25,11 +25,18 @@ const STORAGE_PREFIX = 'certchain:'
 export interface MockCredentialInput {
   recipientName: string
   recipientEmail: string
+  recipientStudentId?: string
+  recipientDob?: string
   credentialTitle: string
   institution: string
   issueDate: string
   credentialType: string
   notes: string
+  _hashes?: {
+    name_hash: string
+    student_id_hash: string
+    dob_hash: string
+  }
 }
 
 export interface StoredMockCredential extends MockCredentialInput {
@@ -111,18 +118,19 @@ export function mockToVerificationResult(
       },
       credential: {
         type: stored.credentialType,
-        // Reuse existing fields that VerifyResult already renders.
-        // V1 mock maps freely; V2 will use the proper CIP-20 schema.
         major: stored.credentialTitle,
         graduation_date: stored.issueDate,
+        // Anchor hashes on-chain — V2 will be inside CIP-20 metadata schema
+        name_hash: stored._hashes?.name_hash || "",
+        student_id_hash: stored._hashes?.student_id_hash || "",
+        doc_hash: stored._hashes?.dob_hash || "",
       },
-      // Recipient name lives in a custom field used only by mock badge.
       _recipientName: stored.recipientName,
       _recipientEmail: stored.recipientEmail,
       _notes: stored.notes,
       _isMock: true,
       _anchorTx: stored._anchorTx,
-    } as never, // VerifyResult is permissive; V2 will type-tighten.
+    } as never,
     blockTime: Math.floor(stored._issuedAt / 1000),
   }
 }
@@ -143,4 +151,9 @@ export function listMockCredentials(): StoredMockCredential[] {
     }
   }
   return out
+}
+
+export function getAllStoredCredentials(): StoredMockCredential[] {
+  // Đã có function `listMockCredentials` rồi → chỉ export hoặc rename
+  return listMockCredentials()
 }

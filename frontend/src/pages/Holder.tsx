@@ -6,6 +6,8 @@ import {
   listMockCredentials,
   type StoredMockCredential,
 } from "../lib/credentialStore";
+import { getUserRole, type UserRole } from "../lib/userRole";
+import RoleBadge from "../components/RoleBadge";
 
 // ============================================================================
 // Holder.tsx — Student Wallet (V1 Lite)
@@ -24,7 +26,11 @@ const M1_DEMO_TX =
 export default function Holder() {
   const [credentials, setCredentials] = useState<StoredMockCredential[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRole, setRoleState] = useState<UserRole | null>(null);
 
+  useEffect(() => {
+    setRoleState(getUserRole());
+  }, []);
   useEffect(() => {
     // Small artificial delay so the loading state is visible — feels intentional
     const t = setTimeout(() => {
@@ -40,6 +46,7 @@ export default function Holder() {
   return (
     <div className="min-h-screen bg-[#FAFAF7] text-black">
       <Navbar />
+      <RoleBadge role={userRole} />
 
       {/* ============== Status strip ============== */}
       <div className="border-b border-ink px-4 md:px-6 py-3">

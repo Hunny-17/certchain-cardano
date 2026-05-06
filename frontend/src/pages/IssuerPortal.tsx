@@ -1,10 +1,17 @@
 import { useState, useEffect } from "react";
 import type { ChangeEvent, SyntheticEvent } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { Link } from "react-router-dom";
 import {
-      generateMockTxHash,
-      saveMockCredential,
-    }  from "../lib/credentialStore";
+  generateMockTxHash,
+  saveMockCredential,
+  listMockCredentials,
+  type StoredMockCredential,
+} from "../lib/credentialStore";
+import { getUserRole, type UserRole } from "../lib/userRole";
+import RoleBadge from "../components/RoleBadge";
+import { hashIdentity } from "../lib/hashUtils";
+import BulkIssueView from "../components/BulkIssueView";
 
 // ============================================================================
 // CertChain — Issuer Portal (Mock)
@@ -14,11 +21,13 @@ import {
 // Style: brutalist editorial light — match Landing/Verifier from Day 2.
 // ============================================================================
 
-type Phase = "idle" | "publishing" | "success";
+type Phase = "idle" | "publishing" | "success" | "history" | "bulk";
 
 interface FormState {
   recipientName: string;
   recipientEmail: string;
+  recipientStudentId: string;
+  recipientDob: string;
   credentialTitle: string;
   institution: string;
   issueDate: string;
@@ -49,6 +58,8 @@ const CREDENTIAL_TYPES = [
 const initialForm: FormState = {
   recipientName: "",
   recipientEmail: "",
+  recipientStudentId: "", 
+  recipientDob: "",
   credentialTitle: "",
   institution: "Văn Hiến University",
   issueDate: new Date().toISOString().slice(0, 10),
@@ -66,18 +77,32 @@ export default function IssuerPortal() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [currentTxHash, setCurrentTxHash] = useState<string>("");
 
+  const [userRole, setRoleState] = useState<UserRole | null>(null);
+  useEffect(() => {
+    setRoleState(getUserRole());
+  }, []);
+
   const handleChange =
     (key: keyof FormState) => (e: FieldChangeEvent) =>
       setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  const handlePublish = (e: SyntheticEvent<HTMLFormElement>) => {
+  const handlePublish = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!form.recipientName || !form.credentialTitle) return;
 
-    // Generate fake tx hash + persist form data to localStorage.
-    // V2 will replace this with real Mesh.js publish + Blockfrost confirmation.
+    // Generate privacy-preserving hashes for sensitive identity fields.
+    // These will be anchored on-chain instead of plaintext PII.
+    const [name_hash, student_id_hash, dob_hash] = await Promise.all([
+      hashIdentity(form.recipientName),
+      form.recipientStudentId ? hashIdentity(form.recipientStudentId) : "",
+      form.recipientDob ? hashIdentity(form.recipientDob) : "",
+    ]);
+
     const txHash = generateMockTxHash();
-    saveMockCredential(txHash, form);
+    saveMockCredential(txHash, {
+      ...form,
+      _hashes: { name_hash, student_id_hash, dob_hash },
+    } as any);
     setCurrentTxHash(txHash);
 
     setPhase("publishing");
@@ -130,9 +155,14 @@ export default function IssuerPortal() {
           </nav>
         </div>
       </header>
-
+      <RoleBadge role={userRole} />
       {/* ================= MAIN ================= */}
       <main className="max-w-7xl mx-auto px-6 md:px-10 py-12 md:py-16">
+        {/* Tab switcher — only show in idle/history phases */}
+        {(phase === "idle" || phase === "bulk" || phase === "history") && (
+          <TabSwitcher phase={phase} setPhase={setPhase} />
+        )}
+        
         <div key={phase} className="phase-enter">
           {phase === "idle" && (
             <IdleView
@@ -152,6 +182,13 @@ export default function IssuerPortal() {
               onReset={reset}
             />
           )}
+          {phase === "history" && (
+          <HistoryView setPhase={setPhase} />
+          )}
+          {phase === "bulk" && (
+          <BulkIssueView onComplete={() => setPhase("history")} />
+          )}
+
         </div>
       </main>
 
@@ -252,6 +289,26 @@ function IdleView({ form, handleChange, handlePublish }: IdleViewProps) {
             onChange={handleChange("recipientEmail")}
             placeholder="recipient@example.com"
           />
+
+          {/* Identity verification fields — hashed on-chain, never plaintext */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Field
+              label="Student ID · Hashed"
+              value={form.recipientStudentId}
+              onChange={handleChange("recipientStudentId")}
+              placeholder="VHU2024001"
+            />
+            <Field
+              label="Date of Birth · Hashed"
+              type="date"
+              value={form.recipientDob}
+              onChange={handleChange("recipientDob")}
+            />
+          </div>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-black/50 -mt-4">
+            ↑ SHA-256 hashed on-chain · plaintext never anchored · privacy-preserving
+          </p>
+
           <Field
             label="Credential · Title"
             required
@@ -577,6 +634,290 @@ interface FieldProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   required?: boolean;
+}
+
+// ============================================================================
+// TabSwitcher — between "Issue New" and "History"
+// ============================================================================
+function TabSwitcher({
+  phase,
+  setPhase,
+}: {
+  phase: Phase;
+  setPhase: (p: Phase) => void;
+}) {
+  const credentials = listMockCredentials();
+  const count = credentials.length;
+
+  return (
+    <div className="grid grid-cols-3 border-2 border-black mb-8 font-mono text-[10px] md:text-xs uppercase tracking-[0.1em] md:tracking-[0.15em]">
+      <button
+        onClick={() => setPhase("idle")}
+        className={`py-3 border-r-2 border-black transition-colors ${
+          phase === "idle"
+            ? "bg-black text-[#FAFAF7]"
+            : "hover:bg-black/5"
+        }`}
+      >
+        ▶ Issue New
+      </button>
+      <button
+        onClick={() => setPhase("bulk")}
+        className={`py-3 border-r-2 border-black transition-colors ${
+          phase === "bulk"
+            ? "bg-black text-[#FAFAF7]"
+            : "hover:bg-black/5"
+        }`}
+      >
+        ⊕ Bulk Issue
+      </button>
+      <button
+        onClick={() => setPhase("history")}
+        className={`py-3 transition-colors ${
+          phase === "history"
+            ? "bg-black text-[#FAFAF7]"
+            : "hover:bg-black/5"
+        }`}
+      >
+        ⌗ History {count > 0 && <span className="opacity-70">({count})</span>}
+      </button>
+    </div>
+  );
+}
+
+// ============================================================================
+// HistoryView — list of issued credentials
+// ============================================================================
+function HistoryView({ setPhase }: { setPhase: (p: Phase) => void }) {
+  const [credentials, setCredentials] = useState<StoredMockCredential[]>([]);
+  const [expandedTx, setExpandedTx] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "today" | "week">("all");
+
+  useEffect(() => {
+    const all = listMockCredentials();
+    all.sort((a, b) => b._issuedAt - a._issuedAt);
+    setCredentials(all);
+  }, []);
+
+  const filtered = credentials.filter((c) => {
+    if (filter === "all") return true;
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    if (filter === "today") return now - c._issuedAt < dayMs;
+    if (filter === "week") return now - c._issuedAt < 7 * dayMs;
+    return true;
+  });
+
+  if (credentials.length === 0) {
+    return (
+      <div className="border-2 border-black bg-white p-8 md:p-12 text-center">
+        <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-black/50 mb-4">
+          [ Empty history ]
+        </div>
+        <h2
+          className="text-3xl md:text-4xl leading-tight mb-4 max-w-xl mx-auto"
+          style={{ fontFamily: "'Instrument Serif', serif" }}
+        >
+          No credentials issued yet.
+        </h2>
+        <p className="text-sm text-black/60 mb-8 max-w-md mx-auto">
+          Once you issue credentials, they'll appear here for tracking and
+          re-sharing.
+        </p>
+        <button
+          onClick={() => setPhase("idle")}
+          className="border-2 border-black px-6 py-4 text-sm uppercase tracking-[0.2em] hover:bg-black hover:text-[#FAFAF7] transition-colors"
+        >
+          ▶ Issue your first credential
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex flex-col md:flex-row md:items-baseline md:justify-between gap-4 mb-6">
+        <div className="flex items-baseline gap-4">
+          <span className="text-[11px] uppercase tracking-[0.25em] text-black/50">
+            № 02 · Issue history
+          </span>
+          <span className="font-mono text-xs text-black/60">
+            {credentials.length} total
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {(["all", "today", "week"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`text-[10px] uppercase tracking-[0.15em] px-3 py-2 border-2 border-black transition-colors ${
+                filter === f
+                  ? "bg-black text-[#FAFAF7]"
+                  : "hover:bg-black/5"
+              }`}
+            >
+              {f === "all" ? "All" : f === "today" ? "Today" : "This week"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="border-2 border-black bg-white p-8 text-center">
+          <p className="text-sm text-black/60">
+            No credentials in this time range.
+          </p>
+        </div>
+      ) : (
+        <div className="border-2 border-black bg-white">
+          <div className="grid grid-cols-12 gap-4 px-5 py-3 border-b-2 border-black bg-[#FAFAF7] text-[9px] uppercase tracking-[0.2em] text-black/60">
+            <div className="col-span-4">Recipient</div>
+            <div className="col-span-5 hidden md:block">Credential</div>
+            <div className="col-span-3 md:col-span-2 text-right md:text-left">
+              Issued
+            </div>
+            <div className="col-span-1 hidden md:block text-right">
+              Status
+            </div>
+          </div>
+
+          {filtered.map((cred) => (
+            <HistoryRow
+              key={cred.txHash}
+              credential={cred}
+              expanded={expandedTx === cred.txHash}
+              onToggle={() =>
+                setExpandedTx(
+                  expandedTx === cred.txHash ? null : cred.txHash,
+                )
+              }
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 flex justify-center">
+        <button
+          onClick={() => setPhase("idle")}
+          className="text-[11px] uppercase tracking-[0.2em] underline underline-offset-4 hover:text-[#0033AD]"
+        >
+          + Issue another credential
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// HistoryRow — expandable row in HistoryView
+// ============================================================================
+function HistoryRow({
+  credential,
+  expanded,
+  onToggle,
+}: {
+  credential: StoredMockCredential;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const issuedDate = new Date(credential._issuedAt);
+  const dateStr = issuedDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const verifyUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/verify/${credential.txHash}`
+      : `https://certchain-cardano.vercel.app/verify/${credential.txHash}`;
+
+  const copyLink = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(verifyUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  };
+
+  return (
+    <>
+      <button
+        onClick={onToggle}
+        className={`w-full text-left grid grid-cols-12 gap-4 px-5 py-4 border-b-2 border-black last:border-b-0 hover:bg-[#FAFAF7] transition-colors ${
+          expanded ? "bg-[#FAFAF7]" : ""
+        }`}
+      >
+        <div
+          className="col-span-4 text-sm md:text-base truncate"
+          style={{ fontFamily: "'Instrument Serif', serif" }}
+        >
+          {credential.recipientName}
+        </div>
+        <div className="col-span-5 text-sm hidden md:block truncate">
+          {credential.credentialTitle}
+        </div>
+        <div className="col-span-3 md:col-span-2 text-[10px] uppercase tracking-[0.15em] text-black/60 text-right md:text-left">
+          {dateStr}
+        </div>
+        <div className="col-span-1 hidden md:flex justify-end items-center">
+          <span className="text-[9px] uppercase tracking-[0.2em] text-[#0033AD] border border-[#0033AD] px-2 py-0.5">
+            ✓ Active
+          </span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="px-5 py-5 bg-[#FAFAF7] border-b-2 border-black last:border-b-0">
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.2em] text-black/50 mb-1">
+                Credential
+              </div>
+              <div className="text-sm md:text-base mb-3">
+                {credential.credentialTitle}
+              </div>
+              <div className="text-[9px] uppercase tracking-[0.2em] text-black/50 mb-1">
+                Type
+              </div>
+              <div className="text-sm mb-3">{credential.credentialType}</div>
+              <div className="text-[9px] uppercase tracking-[0.2em] text-black/50 mb-1">
+                Institution
+              </div>
+              <div className="text-sm">{credential.institution}</div>
+            </div>
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.2em] text-black/50 mb-1">
+                Transaction Hash
+              </div>
+              <code className="text-[10px] break-all block mb-4">
+                {credential.txHash.slice(0, 32)}...
+                {credential.txHash.slice(-12)}
+              </code>
+              <div className="grid grid-cols-2 gap-2">
+                <Link
+                  to={`/verify/${credential.txHash}`}
+                  className="text-[10px] uppercase tracking-[0.2em] border-2 border-black px-3 py-2 hover:bg-black hover:text-[#FAFAF7] transition-colors text-center"
+                >
+                  Verify →
+                </Link>
+                <button
+                  onClick={copyLink}
+                  className="text-[10px] uppercase tracking-[0.2em] border-2 border-black px-3 py-2 hover:bg-black hover:text-[#FAFAF7] transition-colors"
+                >
+                  {copied ? "Copied ✓" : "Copy link"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 function Field({ label, required, ...props }: FieldProps) {

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { setUserRole, type UserRole } from '../lib/userRole'
 
 export default function Hero() {
   return (
@@ -27,42 +28,34 @@ export default function Hero() {
               Issued on Cardano blockchain. Scan QR. Verified in 2 seconds. No paperwork. No legalization.
             </p>
 
-            {/* ============ PRIMARY CTAs — 2 audiences ============ */}
-            <div className="grid sm:grid-cols-2 gap-3 mb-4 max-w-xl">
-              <Link
-                to="/issue"
-                className="group block border-2 border-ink p-4 hover:bg-ink hover:text-bg transition-colors"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono text-sm uppercase tracking-[0.1em]">
-                    ▶ Issue
-                  </span>
-                  <span className="font-mono text-sm group-hover:translate-x-1 transition-transform">
-                    →
-                  </span>
-                </div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted group-hover:text-bg/70">
-                  For universities
-                </div>
-              </Link>
-
-              <Link
-                to="/verify"
-                className="group block p-4 transition-colors hover:opacity-90"
-                style={{ background: '#0033AD', color: '#FAFAF7' }}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono text-sm uppercase tracking-[0.1em]">
-                    ⌗ Verify
-                  </span>
-                  <span className="font-mono text-sm group-hover:translate-x-1 transition-transform">
-                    →
-                  </span>
-                </div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.2em] opacity-70">
-                  For employers
-                </div>
-              </Link>
+            {/* ============ ROLE SELECTOR — 3 audiences ============ */}
+            <div className="mb-4">
+              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-muted mb-3">
+                I am a...
+              </div>
+              <div className="grid sm:grid-cols-3 gap-3 max-w-2xl">
+                <RoleSelectorButton
+                  to="/issue"
+                  role="university"
+                  label="University"
+                  sub="Issue credentials"
+                  variant="outline"
+                />
+                <RoleSelectorButton
+                  to="/holder"
+                  role="student"
+                  label="Student"
+                  sub="Hold credentials"
+                  variant="filled"
+                />
+                <RoleSelectorButton
+                  to="/verify"
+                  role="employer"
+                  label="Employer"
+                  sub="Verify credentials"
+                  variant="outline"
+                />
+              </div>
             </div>
 
             <div className="flex items-center gap-4 flex-wrap font-mono text-xs">
@@ -142,4 +135,63 @@ export default function Hero() {
       </div>
     </section>
   )
+}
+
+function RoleSelectorButton({
+  to,
+  role,
+  label,
+  sub,
+  variant,
+}: {
+  to: string;
+  role: UserRole;
+  label: string;
+  sub: string;
+  variant: 'outline' | 'filled';
+}) {
+  const handleClick = () => setUserRole(role);
+
+  if (variant === 'filled') {
+    return (
+      <Link
+        to={to}
+        onClick={handleClick}
+        className="group block p-4 transition-colors hover:opacity-90"
+        style={{ background: '#0033AD', color: '#FAFAF7' }}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <span className="font-mono text-sm uppercase tracking-[0.1em]">
+            {label}
+          </span>
+          <span className="font-mono text-sm group-hover:translate-x-1 transition-transform">
+            →
+          </span>
+        </div>
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] opacity-70">
+          {sub}
+        </div>
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      to={to}
+      onClick={handleClick}
+      className="group block border-2 border-ink p-4 hover:bg-ink hover:text-bg transition-colors"
+    >
+      <div className="flex items-center justify-between mb-1">
+        <span className="font-mono text-sm uppercase tracking-[0.1em]">
+          {label}
+        </span>
+        <span className="font-mono text-sm group-hover:translate-x-1 transition-transform">
+          →
+        </span>
+      </div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted group-hover:text-bg/70">
+        {sub}
+      </div>
+    </Link>
+  );
 }

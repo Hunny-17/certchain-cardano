@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { setUserRole, type UserRole } from '../lib/userRole'
 
 type Role = {
   num: string
@@ -9,6 +10,7 @@ type Role = {
   href?: string // route if clickable; absent = "coming soon"
   cta?: string
   comingSoon?: boolean
+  roleKey?: UserRole
 }
 
 const roles: Role[] = [
@@ -21,6 +23,7 @@ const roles: Role[] = [
     isAccent: false,
     href: '/issue',
     cta: 'Open Issuer Portal',
+    roleKey: 'university',
   },
   {
     num: '02',
@@ -30,7 +33,8 @@ const roles: Role[] = [
       'Own credentials as portable QR codes. Share with employers via link or scan. No platform lock-in.',
     isAccent: true,
     href: '/holder',
-    cta: 'Wallet — V2 milestone',
+    cta: 'Open My Wallet',
+    roleKey: 'student',
   },
   {
     num: '03',
@@ -41,6 +45,7 @@ const roles: Role[] = [
     isAccent: false,
     href: '/verify',
     cta: 'Open Verifier',
+    roleKey: 'employer',
   },
 ]
 
@@ -121,6 +126,7 @@ export default function RoleCards() {
                 <Link
                   key={role.num}
                   to={role.href}
+                  onClick={() => role.roleKey && setUserRole(role.roleKey)}
                   className={baseClasses}
                   style={baseStyle}
                 >
