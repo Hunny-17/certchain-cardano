@@ -61,49 +61,77 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
 // Banner — anonymous user warning
 // ============================================================================
 function AnonymousBanner({ allowedRoles }: { allowedRoles: UserRole[] }) {
-  const navigate = useNavigate();
-  const primaryRole = allowedRoles[0]; // suggest first allowed role
+  const navigate = useNavigate()
+  const primaryRole = allowedRoles[0]
+  const profile = getRoleProfile(primaryRole)
 
-  const handlePickRole = () => {
-    setUserRole(primaryRole);
-    navigate(getRoleHomeRoute(primaryRole));
-  };
+  const handleAdopt = () => {
+    setUserRole(primaryRole)
+    navigate(getRoleHomeRoute(primaryRole))
+  }
 
   return (
-    <div
-      className="border-b-2 border-black px-4 md:px-6 py-3"
-      style={{ background: "#FFF4D6" }}
-    >
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <span
-            className="w-2 h-2 inline-block shrink-0"
-            style={{ background: "#B8860B" }}
-          />
-          <div className="font-mono text-[10px] uppercase tracking-[0.15em]">
-            <span className="font-medium">Anonymous mode</span>
-            <span className="text-black/60 hidden sm:inline ml-2">
-              · No role selected — V1 demo mode
-            </span>
-          </div>
+    <div className="min-h-screen bg-[#FAFAF7] text-black flex items-center justify-center px-4 py-16">
+      <div className="w-full max-w-2xl">
+        <div className="flex items-baseline gap-4 mb-6">
+          <span className="text-[10px] uppercase tracking-[0.25em] text-black/50">
+            ⏸ Role required
+          </span>
+          <span className="h-px flex-1 bg-black/20" />
         </div>
-        <div className="flex items-center gap-4 font-mono text-[10px] uppercase tracking-[0.15em]">
+
+        <h1
+          className="text-4xl md:text-6xl leading-[0.95] mb-6 break-words"
+          style={{ fontFamily: "'Instrument Serif', serif" }}
+        >
+          This page is for
+          <br />
+          <em className="italic text-[#0033AD]">{profile.displayName}s</em>.
+        </h1>
+
+        <p className="text-sm md:text-base text-black/70 leading-relaxed mb-10 max-w-xl">
+          You haven't picked a role yet. Pick a role to continue — your choice
+          is saved locally, you won't be asked again on this device.
+        </p>
+
+        <div className="border-2 border-black bg-white p-5 md:p-6 mb-4">
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-black/50 mb-4">
+            Continue as
+          </div>
           <button
-            onClick={handlePickRole}
-            className="underline underline-offset-4 hover:text-[#0033AD]"
+            onClick={handleAdopt}
+            className="w-full text-left p-4 border-2 border-black hover:bg-black hover:text-[#FAFAF7] transition-colors group"
           >
-            → Continue as {getRoleProfile(primaryRole).displayName}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xl" style={{ fontFamily: "'Instrument Serif', serif" }}>
+                  {profile.displayName}
+                </div>
+                <div className="text-[10px] uppercase tracking-[0.15em] opacity-70 mt-1">
+                  {profile.identityLabel}
+                </div>
+              </div>
+              <span className="text-2xl group-hover:translate-x-1 transition-transform">→</span>
+            </div>
           </button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => navigate("/")}
-            className="text-black/60 hover:text-black"
+            className="flex-1 border-2 border-black px-5 py-4 hover:bg-black hover:text-[#FAFAF7] transition-colors"
           >
-            Pick role ↑
+            <div className="text-[10px] uppercase tracking-[0.2em] text-black/60 mb-1">
+              Or
+            </div>
+            <div className="text-base" style={{ fontFamily: "'Instrument Serif', serif" }}>
+              ↑ Back to landing · pick a different role
+            </div>
           </button>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // ============================================================================
