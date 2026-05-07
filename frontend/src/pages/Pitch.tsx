@@ -302,7 +302,8 @@ export default function Pitch() {
               any button below — try it yourself.
             </p>
             <div className="grid md:grid-cols-2 gap-4 mb-8">
-              <DemoButton href="/issue" label="Issuer Portal" sub="/issue" />
+              <DemoButton href="/issue" label="Issuer Portal" sub="/issue · University view" />
+              <DemoButton href="/holder" label="Holder Wallet" sub="/holder · Student view" />
               <DemoButton
                 href={`/verify/${M1_TX_HASH}`}
                 label="Verifier (M1 hash)"
@@ -311,15 +312,12 @@ export default function Pitch() {
               <DemoButton
                 href={`https://preprod.cardanoscan.io/transaction/${M1_TX_HASH}`}
                 label="View on Cardanoscan"
-                sub="Block 4,671,820 · 2,658 confirmations"
+                sub="Block 4,671,820 · 2,658+ confirmations"
                 external
               />
-              <DemoButton
-                href="https://github.com/Hunny-17/certchain-cardano"
-                label="GitHub Repository"
-                sub="Open source, MIT license"
-                external
-              />
+            </div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-white/50 mb-6">
+              GitHub repo · <a href="https://github.com/Hunny-17/certchain-cardano" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4 hover:text-white">github.com/Hunny-17/certchain-cardano ↗</a>
             </div>
             <div className="text-[10px] uppercase tracking-[0.2em] text-white/50 pt-6 border-t border-white/20">
               Tx Hash · {M1_TX_HASH}
@@ -380,7 +378,7 @@ export default function Pitch() {
               <br />
               to <em className="italic text-[#0033AD]">on-chain</em>.
             </h2>
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-3 gap-4">
               <Pillar
                 num="A"
                 title="The migration problem"
@@ -388,9 +386,14 @@ export default function Pitch() {
               />
               <Pillar
                 num="B"
-                title="Qwen-VL Vision OCR"
-                body="Bulk-scan paper diplomas. Vision model extracts structured fields (recipient, title, date, GPA). Issuer reviews, signs, anchors on-chain — at scale."
+                title="V1 — Bulk CSV pipeline"
+                body="Live now. Drop a CSV with 10, 100, or 1000 students. Each row hashed locally (SHA-256), anchored on Cardano in batch. The plumbing is built and tested."
                 accent
+              />
+              <Pillar
+                num="C"
+                title="V2/Final — Qwen-VL OCR"
+                body="Replace CSV input with Vision model output. Bulk-scan paper diplomas → extract structured fields → feed into the same on-chain pipeline."
               />
             </div>
             <div className="mt-10 p-6 border-2 border-black bg-white">
@@ -426,15 +429,15 @@ export default function Pitch() {
             </h2>
             <div className="grid md:grid-cols-2 gap-px bg-black border-2 border-black mb-8">
               <Milestone
-                tag="✓ DONE"
+                tag="✓ DONE · 04/05"
                 title="M1 — On-chain POC"
-                detail="Real CIP-20 metadata anchored on Cardano Preprod. Block 4,671,820. 2,658 confirmations and counting."
+                detail="Real CIP-20 metadata anchored on Cardano Preprod. Block 4,671,820. 2,658+ confirmations and counting."
                 done
               />
               <Milestone
-                tag="✓ DONE"
-                title="V1 — Full UX flow"
-                detail="Landing + Issuer Portal + Verifier. Mobile responsive. End-to-end demo coherent: issue → verify in under 5 seconds."
+                tag="✓ DONE · 06/05"
+                title="V1 — Production-grade UX"
+                detail="3 actor portals (Issuer/Holder/Verifier). Role-based access control. SHA-256 anti-impersonation. Bulk CSV issuance. History tracking on both sides. Mobile responsive. Live at certchain-cardano.vercel.app."
                 done
               />
             </div>
@@ -474,8 +477,8 @@ export default function Pitch() {
                 phase="V1"
                 date="08/05"
                 status="✓ Done"
-                title="Idea + UX prototype"
-                detail="Landing + Issuer + Verifier · M1 anchored · mock publish via localStorage with M1 anchor reference"
+                title="Production-grade demo · 3 actors complete"
+                detail="3 portals (Issuer · Holder · Verifier) · Role-based access control · SHA-256 identity hashing (anti-impersonation) · Bulk CSV issuance with live progress · Issuer + Verifier history tracking · Mock publish anchored to M1 reference · Mobile responsive · Live at certchain-cardano.vercel.app"
                 done
               />
               <RoadmapRow
