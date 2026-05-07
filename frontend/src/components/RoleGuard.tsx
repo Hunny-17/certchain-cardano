@@ -37,13 +37,13 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
     return null;
   }
 
-  // No role — anonymous mode, allow access with warning
+  // No role — anonymous mode, show full-screen role picker (blocking)
   if (role === null) {
     return (
-      <>
-        <AnonymousBanner allowedRoles={allowedRoles} />
-        {children}
-      </>
+      <AnonymousBanner
+        allowedRoles={allowedRoles}
+        onRoleSelected={(newRole) => setRole(newRole)}
+      />
     );
   }
 
@@ -59,15 +59,21 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
 // ============================================================================
 // Banner — anonymous user warning
 // ============================================================================
-function AnonymousBanner({ allowedRoles }: { allowedRoles: UserRole[] }) {
-  const navigate = useNavigate()
-  const primaryRole = allowedRoles[0]
-  const profile = getRoleProfile(primaryRole)
+function AnonymousBanner({
+  allowedRoles,
+  onRoleSelected,
+}: {
+  allowedRoles: UserRole[];
+  onRoleSelected: (role: UserRole) => void;
+}) {
+  const navigate = useNavigate();
+  const primaryRole = allowedRoles[0];
+  const profile = getRoleProfile(primaryRole);
 
   const handleAdopt = () => {
-    setUserRole(primaryRole)
-    navigate(getRoleHomeRoute(primaryRole))
-  }
+    setUserRole(primaryRole);
+    onRoleSelected(primaryRole);
+  };
 
   return (
     <div className="min-h-screen bg-[#FAFAF7] text-black flex items-center justify-center px-4 py-16">
@@ -103,14 +109,19 @@ function AnonymousBanner({ allowedRoles }: { allowedRoles: UserRole[] }) {
           >
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xl" style={{ fontFamily: "'Instrument Serif', serif" }}>
+                <div
+                  className="text-xl"
+                  style={{ fontFamily: "'Instrument Serif', serif" }}
+                >
                   {profile.displayName}
                 </div>
                 <div className="text-[10px] uppercase tracking-[0.15em] opacity-70 mt-1">
                   {profile.identityLabel}
                 </div>
               </div>
-              <span className="text-2xl group-hover:translate-x-1 transition-transform">→</span>
+              <span className="text-2xl group-hover:translate-x-1 transition-transform">
+                →
+              </span>
             </div>
           </button>
         </div>
@@ -123,14 +134,17 @@ function AnonymousBanner({ allowedRoles }: { allowedRoles: UserRole[] }) {
             <div className="text-[10px] uppercase tracking-[0.2em] text-black/60 mb-1">
               Or
             </div>
-            <div className="text-base" style={{ fontFamily: "'Instrument Serif', serif" }}>
+            <div
+              className="text-base"
+              style={{ fontFamily: "'Instrument Serif', serif" }}
+            >
               ↑ Back to landing · pick a different role
             </div>
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // ============================================================================
@@ -175,7 +189,9 @@ function AccessRestricted({
           <span className="font-medium">{currentProfile.displayName}</span>, but
           this page requires{" "}
           <span className="font-medium">
-            {allowedRoles.map((r) => getRoleProfile(r).displayName).join(" or ")}
+            {allowedRoles
+              .map((r) => getRoleProfile(r).displayName)
+              .join(" or ")}
           </span>
           . Switch role to continue, or return to a page you can access.
         </p>
