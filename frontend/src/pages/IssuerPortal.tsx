@@ -3,7 +3,6 @@ import type { ChangeEvent, SyntheticEvent } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Link } from "react-router-dom";
 import {
-  generateMockTxHash,
   saveMockCredential,
   listMockCredentials,
   type StoredMockCredential,
@@ -12,7 +11,7 @@ import { getUserRole, type UserRole } from "../lib/userRole";
 import RoleBadge from "../components/RoleBadge";
 import { hashIdentity } from "../lib/hashUtils";
 import BulkIssueView from "../components/BulkIssueView";
-
+import { mintCertificate } from "../lib/mintApi";
 // ============================================================================
 // CertChain — Issuer Portal (Mock)
 // ----------------------------------------------------------------------------
@@ -42,9 +41,9 @@ interface PublishStep {
 }
 
 const PUBLISH_STEPS: PublishStep[] = [
-  { id: 1, label: "Hashing credential metadata", detail: "SHA-256 · CIP-20" },
-  { id: 2, label: "Submitting to Cardano Preprod", detail: "Mesh.js · TxBuilder" },
-  { id: 3, label: "Confirming on-chain", detail: "Awaiting 1 block · ~20s" },
+  { id: 1, label: "Building mint transaction", detail: "Mesh.js · CIP-25 + CIP-20 metadata" },
+  { id: 2, label: "Signing with custody wallet", detail: "Ed25519 · single-sig forge script" },
+  { id: 3, label: "Submitting to Cardano Preprod", detail: "Blockfrost · ~30s confirmation" },
 ];
 
 const CREDENTIAL_TYPES = [
@@ -76,7 +75,8 @@ export default function IssuerPortal() {
   const [activeStep, setActiveStep] = useState(0);
   const [form, setForm] = useState<FormState>(initialForm);
   const [currentTxHash, setCurrentTxHash] = useState<string>("");
-
+  const [claimCode, setClaimCode] = useState<string>("");
+  const [mintError, setMintError] = useState<string>("");
   const [userRole, setRoleState] = useState<UserRole | null>(null);
   useEffect(() => {
     setRoleState(getUserRole());
@@ -90,41 +90,66 @@ export default function IssuerPortal() {
     e.preventDefault();
     if (!form.recipientName || !form.credentialTitle) return;
 
-    // Generate privacy-preserving hashes for sensitive identity fields.
-    // These will be anchored on-chain instead of plaintext PII.
-    const [name_hash, student_id_hash, dob_hash] = await Promise.all([
-      hashIdentity(form.recipientName),
-      form.recipientStudentId ? hashIdentity(form.recipientStudentId) : "",
-      form.recipientDob ? hashIdentity(form.recipientDob) : "",
-    ]);
-
-    const txHash = generateMockTxHash();
-    saveMockCredential(txHash, {
-      ...form,
-      _hashes: { name_hash, student_id_hash, dob_hash },
-    } as any);
-    setCurrentTxHash(txHash);
-
+    setMintError("");
     setPhase("publishing");
     setActiveStep(0);
+
+    // Animate step progression while waiting for API
+    const stepTimer = setInterval(() => {
+      setActiveStep((s) => Math.min(s + 1, PUBLISH_STEPS.length - 1));
+    }, 8000); // advance every 8s, capped at last step
+
+    try {
+      // Generate PII hashes for V3 anchoring (V2 stores in Supabase only)
+      const [name_hash, student_id_hash, dob_hash] = await Promise.all([
+        hashIdentity(form.recipientName),
+        form.recipientStudentId ? hashIdentity(form.recipientStudentId) : "",
+        form.recipientDob ? hashIdentity(form.recipientDob) : "",
+      ]);
+
+      // Call real mint API
+      const result = await mintCertificate({
+        recipient_email: form.recipientEmail || `${form.recipientName.toLowerCase().replace(/\s+/g, ".")}@unknown.local`,
+        recipient_name: form.recipientName,
+        cert_title: form.credentialTitle,
+        institution: form.institution,
+        issue_date: form.issueDate,
+        cert_type: form.credentialType,
+        notes: form.notes || undefined,
+      });
+
+      clearInterval(stepTimer);
+      setActiveStep(PUBLISH_STEPS.length); // mark all done
+
+      // Save to localStorage for legacy history view compatibility
+      saveMockCredential(result.tx_hash, {
+        ...form,
+        _hashes: { name_hash, student_id_hash, dob_hash },
+        _real: true,
+        _claimCodeShown: true,
+        _assetId: result.asset_id,
+      } as any);
+
+      setCurrentTxHash(result.tx_hash);
+      setClaimCode(result.claim_code);
+
+      // Short delay so users see "all steps complete" before success view
+      setTimeout(() => setPhase("success"), 600);
+    } catch (err: unknown) {
+      clearInterval(stepTimer);
+      const message = err instanceof Error ? err.message : String(err);
+      setMintError(message);
+      setPhase("idle"); // go back to form, error shown above it
+    }
   };
 
-  // Drive the fake publish animation
-  useEffect(() => {
-    if (phase !== "publishing") return;
-    if (activeStep >= PUBLISH_STEPS.length) {
-      const t = setTimeout(() => setPhase("success"), 400);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(() => setActiveStep((s) => s + 1), 1000);
-    return () => clearTimeout(t);
-  }, [phase, activeStep]);
-
-  const reset = () => {
+const reset = () => {
     setPhase("idle");
     setActiveStep(0);
     setForm(initialForm);
     setCurrentTxHash("");
+    setClaimCode("");
+    setMintError("");
   };
 
   const verifyUrl =
@@ -169,6 +194,7 @@ export default function IssuerPortal() {
               form={form}
               handleChange={handleChange}
               handlePublish={handlePublish}
+              mintError={mintError}
             />
           )}
           {phase === "publishing" && (
@@ -178,6 +204,7 @@ export default function IssuerPortal() {
             <SuccessView
               form={form}
               txHash={currentTxHash}
+              claimCode={claimCode}
               verifyUrl={verifyUrl}
               onReset={reset}
             />
@@ -205,7 +232,7 @@ export default function IssuerPortal() {
               Latest block · 12s ago
             </span>
           </div>
-          <span className="text-black/40">Mesh.js v1.5</span>
+          <span className="text-black/40">Mesh.js v1.8 · Real mint</span>
         </div>
       </footer>
       <style>{`
@@ -247,9 +274,10 @@ interface IdleViewProps {
   form: FormState;
   handleChange: (key: keyof FormState) => (e: FieldChangeEvent) => void;
   handlePublish: (e: SyntheticEvent<HTMLFormElement>) => void;
+  mintError?: string;
 }
 
-function IdleView({ form, handleChange, handlePublish }: IdleViewProps) {
+function IdleView({ form, handleChange, handlePublish, mintError }: IdleViewProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
       {/* LEFT — Form */}
@@ -273,7 +301,14 @@ function IdleView({ form, handleChange, handlePublish }: IdleViewProps) {
           Fill in the recipient and credential details. The hash is anchored
           on Cardano Preprod via CIP-20 metadata. Verification is permanent.
         </p>
-
+        {mintError && (
+          <div className="border-2 border-red-600 bg-red-50 p-4 mb-8">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-red-700 mb-1">
+              ✗ Mint Failed
+            </div>
+            <div className="text-sm text-red-900 font-mono break-words">{mintError}</div>
+          </div>
+        )}
         <form onSubmit={handlePublish} className="space-y-8">
           <Field
             label="Recipient · Full Name"
@@ -368,6 +403,9 @@ function IdleView({ form, handleChange, handlePublish }: IdleViewProps) {
               By publishing you consent to recording a metadata hash on the
               Cardano blockchain. This action is irreversible.
             </p>
+            {mintError && (
+              <p className="text-red-500 text-sm">{mintError}</p>
+            )}
             <button
               type="submit"
               className="group relative bg-black text-[#FAFAF7] px-10 py-5 text-sm uppercase tracking-[0.2em] hover:bg-[#0033AD] transition-colors duration-200 border-2 border-black"
@@ -490,12 +528,25 @@ function PublishingView({ form, activeStep }: PublishingViewProps) {
 interface SuccessViewProps {
   form: FormState;
   txHash: string;
+  claimCode: string;
   verifyUrl: string;
   onReset: () => void;
 }
 
-function SuccessView({ form, txHash, verifyUrl, onReset }: SuccessViewProps) {
+function SuccessView({ form, txHash, claimCode, verifyUrl, onReset }: SuccessViewProps) {
   const [copied, setCopied] = useState(false);
+  const [claimCodeCopied, setClaimCodeCopied] = useState(false);
+  const [claimCodeAcknowledged, setClaimCodeAcknowledged] = useState(false);
+
+  const copyClaimCode = async () => {
+    try {
+      await navigator.clipboard.writeText(claimCode);
+      setClaimCodeCopied(true);
+      setTimeout(() => setClaimCodeCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  };
   const truncatedHash = `${txHash.slice(0, 12)}...${txHash.slice(-12)}`;
 
   const copyHash = async () => {
@@ -538,7 +589,35 @@ function SuccessView({ form, txHash, verifyUrl, onReset }: SuccessViewProps) {
           has been anchored to Cardano. Share the QR code or verifier link with
           any employer to confirm authenticity in under 2 seconds.
         </p>
-
+        {/* CLAIM CODE — show once, requires acknowledgment */}
+        {claimCode && !claimCodeAcknowledged && (
+          <div className="border-2 border-[#0033AD] bg-[#0033AD]/5 p-6 mb-6">
+            <div className="text-[10px] uppercase tracking-[0.25em] text-[#0033AD] mb-2">
+              ⚠ Claim Code — Save Now, Won't Show Again
+            </div>
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <code className="text-2xl md:text-3xl tracking-[0.15em] font-bold">
+                {claimCode}
+              </code>
+              <button
+                onClick={copyClaimCode}
+                className="text-[10px] uppercase tracking-[0.2em] bg-[#0033AD] text-white px-4 py-3 hover:bg-black transition-colors shrink-0"
+              >
+                {claimCodeCopied ? "Copied ✓" : "Copy"}
+              </button>
+            </div>
+            <p className="text-xs text-black/70 mb-4 leading-relaxed">
+              Share this 8-character code with the recipient via secure channel (email, SMS, or in-person).
+              Only the SHA-256 hash is stored — the original code is shown once on this screen.
+            </p>
+            <button
+              onClick={() => setClaimCodeAcknowledged(true)}
+              className="text-[10px] uppercase tracking-[0.2em] border-2 border-black px-4 py-2 hover:bg-black hover:text-[#FAFAF7] transition-colors"
+            >
+              I've saved it → continue
+            </button>
+          </div>
+        )}
         {/* TX Hash card */}
         <div className="border-2 border-black bg-white p-6 mb-6">
           <div className="text-[10px] uppercase tracking-[0.25em] text-black/50 mb-2">

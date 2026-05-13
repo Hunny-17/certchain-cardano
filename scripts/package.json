@@ -1,0 +1,23 @@
+{
+  "name": "certchain-scripts",
+  "version": "1.0.0",
+  "description": "CertChain dev scripts: POC mint, verify tx, generate custody wallet",
+  "main": "index.js",
+  "scripts": {
+    "generate-wallet": "tsx generate-custody-wallet.ts",
+    "hello": "tsx hello-cardano.ts",
+    "verify": "tsx verify-tx.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@meshsdk/core": "1.8.14",
+    "dotenv": "17.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.12.3",
+    "tsx": "4.20.4",
+    "typescript": "5.6.3"
+  }
+}
