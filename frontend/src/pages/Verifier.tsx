@@ -5,7 +5,7 @@ import VerifyResult from '../components/VerifyResult'
 import { verifyTxHash, type VerificationResult } from '../lib/blockfrost'
 import { loadMockCredential, mockToVerificationResult } from '../lib/credentialStore'
 import { useParams } from "react-router-dom";
-import { getUserRole, type UserRole } from "../lib/userRole";
+import { useUserRole } from "../lib/useUserRole";
 import RoleBadge from "../components/RoleBadge";
 import { verifyAgainstHash } from "../lib/hashUtils";
 
@@ -86,12 +86,8 @@ export default function Verifier() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<VerificationResult | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const [userRole, setRoleState] = useState<UserRole | null>(null);
+  const userRole = useUserRole();
 
-  useEffect(() => {
-    setRoleState(getUserRole());
-  }, []);
-  
   useEffect(() => {
     if (txHash) {
       setInput(txHash)

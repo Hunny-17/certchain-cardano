@@ -6,7 +6,7 @@ import {
   listMockCredentials,
   type StoredMockCredential,
 } from "../lib/credentialStore";
-import { getUserRole, type UserRole } from "../lib/userRole";
+import { useUserRole } from "../lib/useUserRole";
 import RoleBadge from "../components/RoleBadge";
 
 // ============================================================================
@@ -26,11 +26,7 @@ const M1_DEMO_TX =
 export default function Holder() {
   const [credentials, setCredentials] = useState<StoredMockCredential[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userRole, setRoleState] = useState<UserRole | null>(null);
-
-  useEffect(() => {
-    setRoleState(getUserRole());
-  }, []);
+  const userRole = useUserRole();
   useEffect(() => {
     // Small artificial delay so the loading state is visible — feels intentional
     const t = setTimeout(() => {

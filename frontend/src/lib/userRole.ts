@@ -7,10 +7,13 @@
 // Purpose: give judges/testers a sense of role-aware navigation without
 // building auth infrastructure that would contradict the pitch's
 // "no traditional backend" thesis.
+//
+// CHANGELOG (V2 Day 3):
+//   - setUserRole + clearUserRole now dispatch ROLE_CHANGE_EVENT
+//   - Enables useUserRole hook to react to in-tab role changes
+//   - Without this, components mounted before role change keep stale state
 // ============================================================================
-
 export type UserRole = "university" | "student" | "employer";
-
 export interface RoleProfile {
   role: UserRole;
   displayName: string;
@@ -18,6 +21,8 @@ export interface RoleProfile {
 }
 
 const STORAGE_KEY = "certchain:userRole";
+// Exported so useUserRole hook can subscribe to it
+export const ROLE_CHANGE_EVENT = "certchain:roleChange";
 
 // Default mock identities — V2 will be wallet addresses + verified institution data
 const ROLE_PROFILES: Record<UserRole, RoleProfile> = {
@@ -41,6 +46,11 @@ const ROLE_PROFILES: Record<UserRole, RoleProfile> = {
 export function setUserRole(role: UserRole): void {
   try {
     localStorage.setItem(STORAGE_KEY, role);
+    // Fire in-tab event so useUserRole hook listeners re-render
+    // (browser 'storage' event only fires cross-tab, not in same tab)
+    window.dispatchEvent(
+      new CustomEvent(ROLE_CHANGE_EVENT, { detail: role })
+    );
   } catch (e) {
     console.warn("[userRole] failed to persist role:", e);
   }
@@ -61,6 +71,9 @@ export function getUserRole(): UserRole | null {
 export function clearUserRole(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    window.dispatchEvent(
+      new CustomEvent(ROLE_CHANGE_EVENT, { detail: null })
+    );
   } catch {
     // ignore
   }

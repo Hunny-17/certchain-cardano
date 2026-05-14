@@ -7,7 +7,7 @@ import {
   listMockCredentials,
   type StoredMockCredential,
 } from "../lib/credentialStore";
-import { getUserRole, type UserRole } from "../lib/userRole";
+import { useUserRole } from "../lib/useUserRole";
 import RoleBadge from "../components/RoleBadge";
 import { hashIdentity } from "../lib/hashUtils";
 import BulkIssueView from "../components/BulkIssueView";
@@ -77,10 +77,7 @@ export default function IssuerPortal() {
   const [currentTxHash, setCurrentTxHash] = useState<string>("");
   const [claimCode, setClaimCode] = useState<string>("");
   const [mintError, setMintError] = useState<string>("");
-  const [userRole, setRoleState] = useState<UserRole | null>(null);
-  useEffect(() => {
-    setRoleState(getUserRole());
-  }, []);
+  const userRole = useUserRole();
 
   const handleChange =
     (key: keyof FormState) => (e: FieldChangeEvent) =>

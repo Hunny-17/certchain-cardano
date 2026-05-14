@@ -1,12 +1,11 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   type UserRole,
-  getUserRole,
   getRoleProfile,
   getRoleHomeRoute,
   setUserRole,
 } from "../lib/userRole";
+import { useUserRole } from "../lib/useUserRole";
 
 // ============================================================================
 // RoleGuard — protect routes by user role.
@@ -25,26 +24,11 @@ interface RoleGuardProps {
 }
 
 export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
-  const location = useLocation();
-  const [role, setRole] = useState<UserRole | null | undefined>(undefined);
-
-  useEffect(() => {
-    setRole(getUserRole());
-  }, [location.pathname]);
-
-  // Loading state — avoid flash
-  if (role === undefined) {
-    return null;
-  }
+  const role = useUserRole();
 
   // No role — anonymous mode, show full-screen role picker (blocking)
   if (role === null) {
-    return (
-      <AnonymousBanner
-        allowedRoles={allowedRoles}
-        onRoleSelected={(newRole) => setRole(newRole)}
-      />
-    );
+    return <AnonymousBanner allowedRoles={allowedRoles} />;
   }
 
   // Role matches — render
@@ -61,10 +45,8 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
 // ============================================================================
 function AnonymousBanner({
   allowedRoles,
-  onRoleSelected,
 }: {
   allowedRoles: UserRole[];
-  onRoleSelected: (role: UserRole) => void;
 }) {
   const navigate = useNavigate();
   const primaryRole = allowedRoles[0];
@@ -72,7 +54,7 @@ function AnonymousBanner({
 
   const handleAdopt = () => {
     setUserRole(primaryRole);
-    onRoleSelected(primaryRole);
+    // No need to manually update state — useUserRole hook in parent auto re-renders
   };
 
   return (
