@@ -32,20 +32,23 @@ Vietnam graduates ~600,000 students per year, with **thousands of fake diploma c
 
 ### Three Roles, One System
 
-```
-┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
-│  🏛️  ISSUER     │      │  🎓 HOLDER       │      │  🏢 VERIFIER    │
-│  (University)   │─────▶│  (Student)       │─────▶│  (Employer)     │
-│                 │      │                  │      │                 │
-│  Issues diploma │      │  Owns QR code    │      │  Scans → Verify │
-│  on Cardano     │      │  in mobile app   │      │  in 2 seconds   │
-└─────────────────┘      └──────────────────┘      └─────────────────┘
-                                  ▲
-                                  │
-                         ┌────────┴──────────┐
-                         │ Cardano Blockchain│
-                         │  (Immutable)      │
-                         └───────────────────┘
+```mermaid
+flowchart LR
+    A["🏛️ <b>ISSUER</b><br/>University<br/><br/>Issues diploma<br/>on Cardano"]
+    B["🎓 <b>HOLDER</b><br/>Student<br/><br/>Owns QR code<br/>in mobile app"]
+    C["🏢 <b>VERIFIER</b><br/>Employer<br/><br/>Scans → Verify<br/>in 2 seconds"]
+    D[("⛓️ <b>Cardano Blockchain</b><br/>Immutable")]
+
+    A -->|Issues credential| B
+    B -->|Shares QR code| C
+    A -.->|Anchors on-chain| D
+    B -.->|Reads from| D
+    C -.->|Verifies via| D
+
+    style A fill:#FAFAF7,stroke:#000,stroke-width:2px,color:#000
+    style B fill:#0033AD,stroke:#000,stroke-width:2px,color:#fff
+    style C fill:#FAFAF7,stroke:#000,stroke-width:2px,color:#000
+    style D fill:#0A0A0A,stroke:#0033AD,stroke-width:2px,color:#fff
 ```
 
 ---
