@@ -1,13 +1,24 @@
 import { useEffect, useState } from "react";
 
 // ============================================================================
-// CertChain — Pitch Deck (V1, Cardano SEA Hackathon 2026)
+// CertChain — Pitch Deck V1.6 (Cardano SEA Hackathon 2026 · Round 2)
 // ----------------------------------------------------------------------------
-// 10 full-viewport slides, scroll-snap navigation. Brutalist editorial
+// 13 full-viewport slides, scroll-snap navigation. Brutalist editorial
 // matching Landing/Issuer/Verifier — same #FAFAF7 + Instrument Serif +
 // JetBrains Mono + #0033AD accent, sharp 2px borders.
 //
-// Reuse: just route /pitch and you're done. No router config beyond that.
+// V1.6 — Round 2 Updates:
+//  - Removed all "Qwen-VL / AI" claims (moved to Final roadmap only)
+//  - Slide 02 Problem: global stats with citations
+//  - Slide 05 Demo: 3 on-chain mints listed (M1 + V2.1 + V2.2)
+//  - Slide 06 Architecture: removed AI row, added Backend + Custody wallet
+//  - Slide 07: replaced "AI Integration" → "Why Cardano"
+//  - NEW Slide 08: Market (with citations from BP research)
+//  - NEW Slide 09: Business Model (illustrative tiers)
+//  - NEW Slide 10: Competitor landscape
+//  - Slide 11 Traction (was 08): added V2.1 + V2.2 milestones
+//  - Slide 12 Roadmap (was 09): corrected dates, Qwen-VL kept in Final only
+//  - Slide 13 Why Us (was 10): track record updated
 // ============================================================================
 
 const SLIDES = [
@@ -17,10 +28,13 @@ const SLIDES = [
   { id: "04", label: "How It Works" },
   { id: "05", label: "Demo" },
   { id: "06", label: "Architecture" },
-  { id: "07", label: "AI Integration" },
-  { id: "08", label: "Traction" },
-  { id: "09", label: "Roadmap" },
-  { id: "10", label: "Why Us" },
+  { id: "07", label: "Why Cardano" },
+  { id: "08", label: "Market" },
+  { id: "09", label: "Business Model" },
+  { id: "10", label: "Competitors" },
+  { id: "11", label: "Traction" },
+  { id: "12", label: "Roadmap" },
+  { id: "13", label: "Why Us" },
 ];
 
 const M1_TX_HASH =
@@ -68,7 +82,7 @@ export default function Pitch() {
               CertChain
             </span>
             <span className="hidden sm:inline text-[10px] uppercase tracking-[0.2em] text-black/50">
-              · Pitch Deck V1
+              · Pitch Deck V1.6
             </span>
           </a>
           <div className="flex items-center gap-3 md:gap-5 text-[10px] uppercase tracking-[0.15em]">
@@ -126,7 +140,7 @@ export default function Pitch() {
               </span>
               <span className="h-px flex-1 bg-black/20" />
               <span className="text-[10px] uppercase tracking-[0.25em] text-black/50">
-                Cardano SEA Hackathon 2026
+                Cardano SEA Hackathon 2026 · Round 2
               </span>
             </div>
             <h1
@@ -139,14 +153,14 @@ export default function Pitch() {
               className="text-2xl md:text-3xl leading-tight max-w-3xl mb-12"
               style={{ fontFamily: "'Instrument Serif', serif" }}
             >
-              Verifiable academic credentials on Cardano,{" "}
-              <em className="italic">powered by AI</em>.
+              Verifiable academic credentials,{" "}
+              <em className="italic">on Cardano</em>.
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-8 border-t-2 border-black">
               <Stat label="Verification" value="2 sec" />
               <Stat label="Tx Cost" value="~0.18 ADA" />
-              <Stat label="Network" value="Cardano" />
-              <Stat label="Track" value="EdTech + AI" />
+              <Stat label="On-chain mints" value="3 confirmed" />
+              <Stat label="Track" value="EdTech" />
             </div>
           </div>
         </Slide>
@@ -166,16 +180,16 @@ export default function Pitch() {
             </h2>
             <div className="grid md:grid-cols-3 gap-px bg-black border-2 border-black mb-10">
               <DataCell
-                num="2.2M"
-                label="Vietnamese students enrolling every year"
+                num="$21B"
+                label="Global academic fraud, per year (Eaton, 2023)"
               />
               <DataCell
-                num="235+"
-                label="Independent degree-issuing universities"
+                num="200K"
+                label="Fake degrees issued worldwide annually (The Watchdog, 2023)"
               />
               <DataCell
-                num="3-7 days"
-                label="Traditional verification turnaround"
+                num="53%"
+                label="Of employers who actually verify credentials (The Watchdog, 2023)"
               />
             </div>
             <ul className="space-y-3 text-base md:text-lg max-w-3xl">
@@ -216,13 +230,13 @@ export default function Pitch() {
                 num="01"
                 role="University"
                 title="Issuer"
-                desc="Sign and issue credentials directly on-chain via CIP-20 metadata. Bulk digitize legacy paper diplomas with Qwen-VL OCR."
+                desc="Sign and issue credentials directly on-chain via CIP-20 / CIP-25 metadata. Bulk publish from CSV — 10, 100, or 1,000 credentials in one flow."
               />
               <RoleCard
                 num="02"
                 role="Student"
                 title="Holder"
-                desc="Own credentials as portable QR codes. Share with employers via link or scan. No platform lock-in."
+                desc="Own credentials as portable QR codes. Share with employers via link or scan. No platform lock-in. No wallet required."
                 inverted
               />
               <RoleCard
@@ -260,7 +274,7 @@ export default function Pitch() {
               />
               <FlowStep
                 step="03"
-                title="Anchored on Cardano via CIP-20 metadata"
+                title="Anchored on Cardano via CIP-20 / CIP-25 metadata"
                 detail="~0.18 ADA tx fee · 1 block confirmation · permanent"
               />
               <FlowStep
@@ -298,8 +312,9 @@ export default function Pitch() {
               .
             </h2>
             <p className="text-lg md:text-xl text-white/80 leading-relaxed mb-10 max-w-3xl">
-              The full end-to-end flow runs against the real blockchain. Click
-              any button below — try it yourself.
+              Three on-chain mints already confirmed on Preprod. The full
+              end-to-end flow runs against the real blockchain — click any
+              button below and try it yourself.
             </p>
             <div className="grid md:grid-cols-2 gap-4 mb-8">
               <DemoButton href="/issue" label="Issuer Portal" sub="/issue · University view" />
@@ -319,8 +334,10 @@ export default function Pitch() {
             <div className="text-[10px] uppercase tracking-[0.2em] text-white/50 mb-6">
               GitHub repo · <a href="https://github.com/Hunny-17/certchain-cardano" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4 hover:text-white">github.com/Hunny-17/certchain-cardano ↗</a>
             </div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-white/50 pt-6 border-t border-white/20">
-              Tx Hash · {M1_TX_HASH}
+            <div className="text-[10px] uppercase tracking-[0.2em] text-white/50 pt-6 border-t border-white/20 space-y-1">
+              <div>M1 · {M1_TX_HASH}</div>
+              <div>V2.1 · a3865e96… (backend mint flow)</div>
+              <div>V2.2 · abd50c23… (full claim flow)</div>
             </div>
           </div>
         </Slide>
@@ -343,57 +360,58 @@ export default function Pitch() {
             </p>
             <div className="border-2 border-black bg-white">
               <ArchRow layer="Frontend" tech="React 19 · Vite 6 · Tailwind v4" />
-              <ArchRow layer="Wallet (V2)" tech="Mesh.js SDK · CIP-30" />
+              <ArchRow layer="Backend (V2)" tech="Vercel serverless · Node 22 LTS" />
+              <ArchRow layer="Wallet model" tech="Mesh.js 1.8 · Custody wallet · CIP-30 (planned)" />
               <ArchRow
                 layer="Read provider"
                 tech="Blockfrost API (read-as-a-service)"
               />
               <ArchRow
                 layer="On-chain protocol"
-                tech="CIP-20 metadata anchoring"
+                tech="CIP-20 / CIP-25 metadata anchoring"
+                accent
+              />
+              <ArchRow
+                layer="Off-chain store"
+                tech="Supabase Postgres · Row-level security · SHA-256 hashing"
               />
               <ArchRow
                 layer="Smart contracts (Final)"
                 tech="Plutus · revocation registry"
               />
-              <ArchRow
-                layer="AI layer"
-                tech="Qwen-VL Vision · OCR diploma digitization"
-                accent
-              />
-              <ArchRow layer="Hosting" tech="Vercel (frontend only)" last />
+              <ArchRow layer="Hosting" tech="Vercel (frontend + serverless)" last />
             </div>
           </div>
         </Slide>
 
-        {/* ============== 07 — AI INTEGRATION ============== */}
+        {/* ============== 07 — WHY CARDANO ============== */}
         <Slide id="07">
           <div className="max-w-5xl">
-            <SlideHeader index="07" label="AI Integration" />
+            <SlideHeader index="07" label="Why Cardano" />
             <h2
               className="text-5xl md:text-7xl leading-[0.95] mb-10 break-words"
               style={{ fontFamily: "'Instrument Serif', serif" }}
             >
-              Bridge legacy <em className="italic">paper</em>
+              Not retrofitted from Ethereum.
               <br />
-              to <em className="italic text-[#0033AD]">on-chain</em>.
+              <em className="italic text-[#0033AD]">Native by design</em>.
             </h2>
             <div className="grid md:grid-cols-3 gap-4">
               <Pillar
                 num="A"
-                title="The migration problem"
-                body="Vietnamese universities have decades of paper diplomas — millions of them. Manual transcription is too slow and error-prone for system-wide adoption."
+                title="$0.20 per mint"
+                body="Cardano Mainnet transaction fees average ~$0.20. Ethereum is $5–20. At university scale — thousands of diplomas per cohort — this is the difference between viable and not."
               />
               <Pillar
                 num="B"
-                title="V1 — Bulk CSV pipeline"
-                body="Live now. Drop a CSV with 10, 100, or 1000 students. Each row hashed locally (SHA-256), anchored on Cardano in batch. The plumbing is built and tested."
+                title="Proof-of-Stake"
+                body="Orders of magnitude less energy than proof-of-work. Universities increasingly need carbon-aware infrastructure to meet ESG mandates."
                 accent
               />
               <Pillar
                 num="C"
-                title="V2/Final — Qwen-VL OCR"
-                body="Replace CSV input with Vision model output. Bulk-scan paper diplomas → extract structured fields → feed into the same on-chain pipeline."
+                title="CIP-25 native metadata"
+                body="Rich, on-chain NFT metadata as a first-class standard. No workarounds, no IPFS-only schemes. The credential is the chain entry."
               />
             </div>
             <div className="mt-10 p-6 border-2 border-black bg-white">
@@ -401,24 +419,197 @@ export default function Pitch() {
                 Why this matters for adoption
               </div>
               <p className="text-base md:text-lg leading-relaxed">
-                A university with 50,000 alumni cannot manually re-issue every
-                credential. AI digitization is the missing link between Web2
-                paper and Web3 verifiability —{" "}
+                For credentialing to scale across SEA universities, the
+                blockchain layer has to be{" "}
                 <em
                   className="italic text-[#0033AD]"
                   style={{ fontFamily: "'Instrument Serif', serif" }}
                 >
-                  the practical path to scale.
+                  cheap, sustainable, and metadata-rich.
+                </em>{" "}
+                Cardano is one of the few chains that delivers all three —
+                without smart contract risk for V1 anchoring.
+              </p>
+            </div>
+          </div>
+        </Slide>
+
+        {/* ============== 08 — MARKET (NEW) ============== */}
+        <Slide id="08">
+          <div className="max-w-5xl">
+            <SlideHeader index="08" label="Market" />
+            <h2
+              className="text-5xl md:text-7xl leading-[0.95] mb-10 break-words"
+              style={{ fontFamily: "'Instrument Serif', serif" }}
+            >
+              Vietnam first.
+              <br />
+              <em className="italic text-[#0033AD]">Then SEA</em>.
+            </h2>
+            <p className="text-base md:text-lg text-black/70 leading-relaxed mb-10 max-w-3xl">
+              CertChain sits at the intersection of three growing markets.
+              All figures below come from cited industry research — not
+              founder claims.
+            </p>
+            <div className="grid md:grid-cols-2 gap-px bg-black border-2 border-black mb-8">
+              <DataCell
+                num="$10.7B"
+                label="SEA EdTech market 2024 → $41.5B by 2033 · CAGR 14.7% (IMARC Group, 2024)"
+              />
+              <DataCell
+                num="$1.08B"
+                label="Vietnam EdTech market 2024 · CAGR 13.10% through 2034 (Expert Market Research, 2024)"
+              />
+              <DataCell
+                num="47%"
+                label="Of higher-ed institutions shifting toward blockchain credentialing (Global Growth Insights, 2026)"
+              />
+              <DataCell
+                num="Decision 749"
+                label="VN National Digital Transformation Program — education prioritized through 2030 (Govt of Vietnam, 2020)"
+              />
+            </div>
+            <div className="p-6 border-2 border-black bg-white">
+              <div className="text-[10px] uppercase tracking-[0.25em] text-black/50 mb-2">
+                Why this matters
+              </div>
+              <p className="text-base md:text-lg leading-relaxed">
+                The market is moving in our direction —{" "}
+                <em
+                  className="italic text-[#0033AD]"
+                  style={{ fontFamily: "'Instrument Serif', serif" }}
+                >
+                  blockchain credentialing is shifting from experimental to mainstream,
+                </em>{" "}
+                and Vietnam's national digital transformation policy creates
+                regulatory tailwind for institutional adoption.
+              </p>
+            </div>
+          </div>
+        </Slide>
+
+        {/* ============== 09 — BUSINESS MODEL (NEW) ============== */}
+        <Slide id="09">
+          <div className="max-w-5xl">
+            <SlideHeader index="09" label="Business Model" />
+            <h2
+              className="text-5xl md:text-7xl leading-[0.95] mb-10 break-words"
+              style={{ fontFamily: "'Instrument Serif', serif" }}
+            >
+              Four tiers.{" "}
+              <em className="italic text-[#0033AD]">One free forever</em>.
+            </h2>
+            <p className="text-base md:text-lg text-black/70 leading-relaxed mb-10 max-w-3xl">
+              The verifier side stays free — that's how the network grows.
+              Issuers pay for the writes; readers pay nothing. These tiers are{" "}
+              <em>illustrative</em>, calibrated to Vietnamese institutional
+              budgets if commercialization is pursued.
+            </p>
+            <div className="grid md:grid-cols-2 gap-4 mb-10">
+              <Pillar
+                num="01"
+                title="Pay-per-certificate"
+                body="Small institutions and pilots pay only when they issue. No commitment, no annual contract. Best for first deployments and proof-of-value."
+              />
+              <Pillar
+                num="02"
+                title="Standard subscription"
+                body="Mid-sized universities issuing hundreds to thousands of credentials per cycle. Predictable monthly cost, unlimited mints within tier, priority support."
+                accent
+              />
+              <Pillar
+                num="03"
+                title="Enterprise"
+                body="Large universities or national programs. Custom metadata schemas, dedicated onboarding, SLA, API access for HR/recruitment integrations."
+              />
+              <Pillar
+                num="04"
+                title="Verifier — free forever"
+                body="Employers, governments, individuals never pay. Public-good infrastructure. Network effects compound as more issuers join."
+              />
+            </div>
+            <div className="p-6 border-2 border-black bg-white">
+              <div className="text-[10px] uppercase tracking-[0.25em] text-black/50 mb-2">
+                Unit economics
+              </div>
+              <p className="text-base md:text-lg leading-relaxed">
+                Variable cost per cert is{" "}
+                <em
+                  className="italic text-[#0033AD]"
+                  style={{ fontFamily: "'Instrument Serif', serif" }}
+                >
+                  pennies
+                </em>{" "}
+                — the Cardano fee plus a fraction of a cent for API and storage.
+                Gross margin remains healthy across all paid tiers.
+              </p>
+            </div>
+          </div>
+        </Slide>
+
+        {/* ============== 10 — COMPETITORS (NEW) ============== */}
+        <Slide id="10">
+          <div className="max-w-5xl">
+            <SlideHeader index="10" label="Competitors" />
+            <h2
+              className="text-5xl md:text-7xl leading-[0.95] mb-10 break-words"
+              style={{ fontFamily: "'Instrument Serif', serif" }}
+            >
+              The space is busy.
+              <br />
+              <em className="italic text-[#0033AD]">SEA + Cardano-native is open</em>.
+            </h2>
+            <p className="text-base md:text-lg text-black/70 leading-relaxed mb-10 max-w-3xl">
+              Most competitors are Western enterprise platforms originally
+              built for Ethereum. None of them is Cardano-native, and none
+              treats Vietnam as a home market.
+            </p>
+            <div className="border-2 border-black bg-white">
+              <ArchRow
+                layer="Accredible"
+                tech="North America focus · USD 996+/yr · Optional blockchain"
+              />
+              <ArchRow
+                layer="Credly"
+                tech="Global enterprise · Quote-based · Optional blockchain"
+              />
+              <ArchRow
+                layer="Sertifier"
+                tech="Mid-market · USD 300–1,250/yr · Optional Verified"
+              />
+              <ArchRow
+                layer="Blockcerts"
+                tech="Open standard (self-deploy) · MIT-originated · Multi-chain"
+              />
+              <ArchRow
+                layer="CertChain"
+                tech="Vietnam-first · Cardano-native · Custody-wallet UX"
+                accent
+                last
+              />
+            </div>
+            <div className="mt-8 p-6 border-2 border-black bg-white">
+              <div className="text-[10px] uppercase tracking-[0.25em] text-black/50 mb-2">
+                Differentiation
+              </div>
+              <p className="text-base md:text-lg leading-relaxed">
+                Three things competitors don't offer together:{" "}
+                <em
+                  className="italic text-[#0033AD]"
+                  style={{ fontFamily: "'Instrument Serif', serif" }}
+                >
+                  Cardano-native architecture, Vietnam-first market focus,
+                  and a working prototype with on-chain proof.
                 </em>
               </p>
             </div>
           </div>
         </Slide>
 
-        {/* ============== 08 — TRACTION ============== */}
-        <Slide id="08">
+        {/* ============== 11 — TRACTION ============== */}
+        <Slide id="11">
           <div className="max-w-5xl">
-            <SlideHeader index="08" label="Traction" />
+            <SlideHeader index="11" label="Traction" />
             <h2
               className="text-5xl md:text-7xl leading-[0.95] mb-10 break-words"
               style={{ fontFamily: "'Instrument Serif', serif" }}
@@ -437,7 +628,19 @@ export default function Pitch() {
               <Milestone
                 tag="✓ DONE · 06/05"
                 title="V1 — Production-grade UX"
-                detail="3 actor portals (Issuer/Holder/Verifier). Role-based access control. SHA-256 anti-impersonation. Bulk CSV issuance. History tracking on both sides. Mobile responsive. Live at certchain-cardano.vercel.app."
+                detail="3 actor portals (Issuer/Holder/Verifier). Role-based access control. SHA-256 anti-impersonation. Bulk CSV issuance. History tracking. Mobile responsive."
+                done
+              />
+              <Milestone
+                tag="✓ DONE · 13/05"
+                title="V2.1 — Backend mint flow"
+                detail="Vercel serverless + Mesh.js + custody wallet. First real on-chain mint via the new backend pipeline. Tx a3865e96…"
+                done
+              />
+              <Milestone
+                tag="✓ DONE · 13/05"
+                title="V2.2 — End-to-end claim"
+                detail="Full CSV → custody → Blockfrost flow. Real claim code ULHH2MM5 anchored on Preprod. Tx abd50c23…"
                 done
               />
             </div>
@@ -460,10 +663,10 @@ export default function Pitch() {
           </div>
         </Slide>
 
-        {/* ============== 09 — ROADMAP ============== */}
-        <Slide id="09">
+        {/* ============== 12 — ROADMAP ============== */}
+        <Slide id="12">
           <div className="max-w-5xl">
-            <SlideHeader index="09" label="Roadmap" />
+            <SlideHeader index="12" label="Roadmap" />
             <h2
               className="text-5xl md:text-7xl leading-[0.95] mb-10 break-words"
               style={{ fontFamily: "'Instrument Serif', serif" }}
@@ -475,25 +678,26 @@ export default function Pitch() {
             <div className="space-y-4">
               <RoadmapRow
                 phase="V1"
-                date="08/05"
+                date="06/05"
                 status="✓ Done"
                 title="Production-grade demo · 3 actors complete"
-                detail="3 portals (Issuer · Holder · Verifier) · Role-based access control · SHA-256 identity hashing (anti-impersonation) · Bulk CSV issuance with live progress · Issuer + Verifier history tracking · Mock publish anchored to M1 reference · Mobile responsive · Live at certchain-cardano.vercel.app"
+                detail="3 portals (Issuer · Holder · Verifier) · Role-based access control · SHA-256 identity hashing · Bulk CSV issuance with live progress · History tracking on both sides · Mobile responsive · Live at certchain-cardano.vercel.app"
                 done
               />
               <RoadmapRow
                 phase="V2"
-                date="17/05"
-                status="In progress"
-                title="Real on-chain publish + PDF proposal"
-                detail="Replace localStorage mock with Mesh.js TxBuilder · CIP-30 wallet connect · every form submission becomes a real Preprod transaction"
+                date="13/05"
+                status="✓ Done · on-chain"
+                title="Real on-chain publish via backend serverless"
+                detail="Mesh.js TxBuilder · Vercel serverless · Custody wallet model · 2 real Preprod mints confirmed (V2.1 anchor + V2.2 claim) · Business Plan submission 18/05 · Slide Deck submission 19/05"
+                done
               />
               <RoadmapRow
                 phase="Final"
                 date="26-27/05"
                 status="Planned"
-                title="Smart contracts + Qwen-VL OCR"
-                detail="Plutus revocation registry · Qwen-VL bulk diploma OCR pipeline · live pitch onsite at NTU-VN"
+                title="Smart contracts + AI digitization"
+                detail="Exploring Plutus / Aiken smart contracts for credential revocation · Researching AI-based OCR for bulk paper diploma digitization · Live pitch onsite at NTU-VN. (All Final-stage items are research directions, not commitments — actual deliverables to be confirmed during the 24-hour hackathon.)"
                 accent
               />
               <RoadmapRow
@@ -501,16 +705,16 @@ export default function Pitch() {
                 date="06/2026+"
                 status="Future"
                 title="Production deployment"
-                detail="Move to Cardano Mainnet · pilot deployment with NTU-VN · regional expansion across SEA"
+                detail="Move to Cardano Mainnet · Pilot deployment with Vietnamese universities · Project Catalyst grant application · Regional expansion across SEA"
               />
             </div>
           </div>
         </Slide>
 
-        {/* ============== 10 — WHY US ============== */}
-        <Slide id="10">
+        {/* ============== 13 — WHY US ============== */}
+        <Slide id="13">
           <div className="max-w-5xl">
-            <SlideHeader index="10" label="Why us" />
+            <SlideHeader index="13" label="Why us" />
             <h2
               className="text-5xl md:text-7xl leading-[0.95] mb-10 break-words"
               style={{ fontFamily: "'Instrument Serif', serif" }}
@@ -523,12 +727,12 @@ export default function Pitch() {
               <Pillar
                 num="A"
                 title="Tran Quoc Huy"
-                body="Computer Science student at Văn Hiến University (expected 2027). Active in Vietnam hackathon scene — Cardano SEA, Qwen AI Build Day, Lotus Hackathon. Cardano-curious since 2025, building seriously since M1."
+                body="Computer Science student at Van Hien University, Ho Chi Minh City (expected 2027). Active in Vietnam hackathon scene — Cardano SEA, Qwen AI Build Day, Lotus Hackathon. Building seriously on Cardano since M1."
               />
               <Pillar
                 num="B"
-                title="Why this team can ship"
-                body="Already delivered M1 on real blockchain. Already delivered V1 UX with mobile responsive design. Track record of finishing what I start, in milestones, on time."
+                title="Track record of shipping"
+                body="Delivered M1 on real blockchain. Delivered V1 with mobile-responsive UX. Delivered V2 with backend serverless + 2 more on-chain mints. Three weeks. One person. Three confirmed transactions."
                 accent
               />
             </div>
@@ -594,13 +798,13 @@ export default function Pitch() {
           <div className="flex items-center gap-3 md:gap-4">
             <span className="flex items-center gap-2 shrink-0">
               <span className="w-2 h-2 bg-[#0033AD] inline-block" />
-              CertChain · Pitch Deck V1
+              CertChain · Pitch Deck V1.6
             </span>
             <span className="text-black/40 hidden sm:inline">
-              Cardano SEA Hackathon 2026
+              Cardano SEA Hackathon 2026 · Round 2
             </span>
           </div>
-          <span className="text-black/40 shrink-0">EdTech + AI</span>
+          <span className="text-black/40 shrink-0">EdTech</span>
         </div>
       </footer>
     </div>
