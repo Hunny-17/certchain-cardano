@@ -77,7 +77,11 @@ function parseCip25(label721Json: unknown): Partial<CertChainMetadata> | null {
     credential: {
       major: cert.name as string | undefined,
       type: cert.cert_type as string | undefined,
+      graduation_date: cert.issue_date as string | undefined,
     },
+    issuer: cert.institution
+      ? { name: cert.institution as string }
+      : undefined,
   }
 }
 
@@ -201,6 +205,11 @@ export async function verifyTxHash(txHash: string): Promise<VerificationResult> 
     if (label721?.json_metadata) {
       const parsed = parseCip25(label721.json_metadata)
       if (parsed) {
+        // Smart merge for issuer: prefer CIP-25 institution name over CIP-20 address
+        const mergedIssuer = parsed.issuer?.name
+          ? parsed.issuer
+          : mergedMetadata.issuer
+
         mergedMetadata = {
           ...mergedMetadata,
           ...parsed,
@@ -208,6 +217,7 @@ export async function verifyTxHash(txHash: string): Promise<VerificationResult> 
             ...(mergedMetadata.credential || {}),
             ...(parsed.credential || {}),
           },
+          issuer: mergedIssuer,
         }
         isCertChain = true // CIP-25 NFT means it's a CertChain credential
       }
