@@ -24,6 +24,7 @@ export interface CertChainMetadata {
   cert_type?: string
   claim_hash?: string
   policy_id?: string
+  recipient_name?: string
 }
 
 export interface VerificationResult {
@@ -82,6 +83,7 @@ function parseCip25(label721Json: unknown): Partial<CertChainMetadata> | null {
     issuer: cert.institution
       ? { name: cert.institution as string }
       : undefined,
+    recipient_name: cert.recipient_name as string | undefined,
   }
 }
 

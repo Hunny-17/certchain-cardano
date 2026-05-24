@@ -60,7 +60,8 @@ export default function VerifyResult({
   const meta = result.metadata as (typeof result.metadata & MockExtras) | null;
   const isMock = meta?._isMock === true;
   const anchorTx = meta?._anchorTx ?? M1_ANCHOR_TX;
-  const recipientName = meta?._recipientName;
+  // Recipient name: prefer V1 mock extras, then V2 CIP-25 recipient_name
+  const recipientName = meta?._recipientName ?? meta?.recipient_name;
   const recipientEmail = meta?._recipientEmail;
   const notes = meta?._notes;
 
