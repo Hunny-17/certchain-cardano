@@ -34,6 +34,23 @@ type MockExtras = {
   _notes?: string;
 };
 
+// Format IPFS / placeholder URIs for display
+function formatImageUri(uri: string | undefined): string | null {
+  if (!uri) return null;
+  if (uri.includes("placeholder")) return null;
+  if (uri.startsWith("ipfs://")) {
+    return `https://ipfs.io/ipfs/${uri.slice("ipfs://".length)}`;
+  }
+  return uri;
+}
+
+// Format claim_hash for display (truncate to 16 chars)
+function formatHash(h: string | undefined): string | undefined {
+  if (!h) return undefined;
+  if (h.length <= 24) return h;
+  return `${h.slice(0, 12)}…${h.slice(-8)}`;
+}
+
 export default function VerifyResult({
   result,
 }: {
@@ -46,6 +63,16 @@ export default function VerifyResult({
   const recipientName = meta?._recipientName;
   const recipientEmail = meta?._recipientEmail;
   const notes = meta?._notes;
+
+  // V2 NFT-specific fields (parsed from CIP-25 label 721)
+  const assetName = meta?.asset_name;
+  const policyId = meta?.policy_id;
+  const certType = meta?.cert_type;
+  const claimHash = meta?.claim_hash;
+  const imageUri = formatImageUri(meta?.image);
+
+  // Detect V2 on-chain mint (has asset_name but not mock)
+  const isV2OnChain = !isMock && !!assetName;
 
   return (
     <div className="mt-12">
@@ -64,6 +91,25 @@ export default function VerifyResult({
           </div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
             Anchored via M1 · {anchorTx.slice(0, 12)}...{anchorTx.slice(-6)}
+          </div>
+        </div>
+      )}
+
+      {/* V2 on-chain badge */}
+      {success && isV2OnChain && (
+        <div
+          className="border border-b-0 border-ink px-6 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+          style={{ background: "#E8F5E9" }}
+        >
+          <div className="font-mono text-[10px] uppercase tracking-[0.2em] flex items-center gap-3">
+            <span
+              className="inline-block w-2 h-2"
+              style={{ background: "#00C853" }}
+            />
+            <span>V2 ON-CHAIN NFT · CIP-25 metadata</span>
+          </div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
+            Asset · {assetName}
           </div>
         </div>
       )}
@@ -88,6 +134,11 @@ export default function VerifyResult({
         {success && recipientName && (
           <div className="mt-4 font-mono text-xs uppercase tracking-[0.2em] opacity-80">
             Issued to · <span className="font-sans normal-case text-base ml-1">{recipientName}</span>
+          </div>
+        )}
+        {success && !recipientName && isV2OnChain && result.metadata?.credential?.major && (
+          <div className="mt-4 font-mono text-xs uppercase tracking-[0.2em] opacity-80">
+            Credential · <span className="font-sans normal-case text-base ml-1">{result.metadata.credential.major}</span>
           </div>
         )}
         {!success && (
@@ -130,18 +181,23 @@ export default function VerifyResult({
                   result.metadata.issuer?.name || result.metadata.issuer?.id
                 }
               />
-              <Field label="Type" value={result.metadata.credential?.type} />
               <Field
-                label={isMock ? "Title" : "Major"}
+                label="Type"
+                value={result.metadata.credential?.type || certType}
+              />
+              <Field
+                label={isMock ? "Title" : "Title / Major"}
                 value={result.metadata.credential?.major}
               />
-              {!isMock && (
+              {!isMock && !isV2OnChain && (
                 <Field label="GPA" value={result.metadata.credential?.gpa} />
               )}
-              <Field
-                label={isMock ? "Issue date" : "Graduation"}
-                value={result.metadata.credential?.graduation_date}
-              />
+              {result.metadata.credential?.graduation_date && (
+                <Field
+                  label={isMock ? "Issue date" : "Graduation"}
+                  value={result.metadata.credential.graduation_date}
+                />
+              )}
               {result.blockTime && (
                 <Field
                   label={isMock ? "Issued at (local)" : "On-chain at"}
@@ -154,7 +210,55 @@ export default function VerifyResult({
             </div>
           </div>
 
+          {/* V2 — CIP-25 NFT details */}
+          {isV2OnChain && (
+            <div className="border-b border-ink p-6 bg-bg-secondary">
+              <div className="font-mono text-xs uppercase tracking-widest text-ink-muted mb-4">
+                [02] / On-Chain NFT (CIP-25)
+              </div>
+              <div className="grid md:grid-cols-2 gap-6">
+                {assetName && <Field label="Asset name" value={assetName} />}
+                {policyId && (
+                  <div>
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2">
+                      Policy ID
+                    </div>
+                    <code className="block font-mono text-xs break-all bg-ink text-bg p-2">
+                      {policyId}
+                    </code>
+                  </div>
+                )}
+                {claimHash && (
+                  <div>
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2">
+                      Claim hash
+                    </div>
+                    <code className="block font-mono text-xs break-all bg-ink text-bg p-2">
+                      {formatHash(claimHash)}
+                    </code>
+                  </div>
+                )}
+                {imageUri && (
+                  <div className="md:col-span-2">
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2">
+                      Image
+                    </div>
+                    <a
+                      href={imageUri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs underline underline-offset-4 hover:text-cardano-blue"
+                    >
+                      {imageUri}
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {!isMock &&
+            !isV2OnChain &&
             (result.metadata.credential?.name_hash ||
               result.metadata.credential?.student_id_hash ||
               result.metadata.credential?.doc_hash) && (
