@@ -19,6 +19,18 @@ import {
 import type { AssetMetadata, Mint } from "@meshsdk/core";
 import { z } from "zod";
 import { randomBytes } from "node:crypto";
+import { bech32 as bech32codec } from "bech32";
+
+// ─── Helpers ──────────────────────────────────────────────────────
+
+/** CIP-30 getChangeAddress() returns raw hex bytes, not bech32. Convert if needed. */
+function toBech32(hex: string): string {
+  if (hex.startsWith("addr") || hex.startsWith("stake")) return hex;
+  const raw = Buffer.from(hex, "hex");
+  const networkId = raw[0] & 0x0f;
+  const hrp = networkId === 1 ? "addr" : "addr_test";
+  return bech32codec.encode(hrp, bech32codec.toWords(raw), 1000);
+}
 
 // ─── Input schema ─────────────────────────────────────────────────
 
@@ -62,8 +74,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const blockfrost = new BlockfrostProvider(process.env.BLOCKFROST_KEY!);
 
+    const issuerBech32 = toBech32(body.issuer_address);
+    const recipientBech32 = toBech32(body.recipient_address);
+
     // ForgeScript keyed to the ISSUER wallet — only their signature can mint
-    const forgingScript = ForgeScript.withOneSignature(body.issuer_address);
+    const forgingScript = ForgeScript.withOneSignature(issuerBech32);
     const policyId = resolveScriptHash(forgingScript);
     const assetName = buildAssetName();
 
@@ -76,8 +91,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       institution: body.institution.slice(0, 64),
       issue_date: body.issue_date,
       recipient_name: body.recipient_name.slice(0, 64),
-      issuer: body.issuer_address.slice(0, 64),
-      recipient: body.recipient_address.slice(0, 64),
+      issuer: issuerBech32.slice(0, 64),
+      recipient: recipientBech32.slice(0, 64),
     };
 
     const mintAsset: Mint = {
@@ -85,15 +100,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       assetQuantity: "1",
       metadata,
       label: "721",
-      recipient: body.recipient_address,
+      recipient: recipientBech32,
     };
 
     // Mock initiator — server has the issuer address, Blockfrost fetches UTxOs
     const mockInitiator = {
-      getChangeAddress: async () => body.issuer_address,
-      getUsedAddresses: async () => [body.issuer_address],
+      getChangeAddress: async () => issuerBech32,
+      getUsedAddresses: async () => [issuerBech32],
       getUnusedAddresses: async () => [],
-      getUtxos: async () => blockfrost.fetchAddressUTxOs(body.issuer_address),
+      getUtxos: async () => blockfrost.fetchAddressUTxOs(issuerBech32),
     };
 
     const tx = new Transaction({
@@ -104,8 +119,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     tx.setMetadata(674, {
       msg: [
         "CertChain v3 prototype",
-        `issuer:${body.issuer_address.slice(0, 20)}`,
-        `student:${body.recipient_address.slice(0, 20)}`,
+        `issuer:${issuerBech32.slice(0, 20)}`,
+        `student:${recipientBech32.slice(0, 20)}`,
         `cert:${body.cert_title.slice(0, 40)}`,
       ],
     });
