@@ -409,32 +409,6 @@ export default function MintWithWallet({ wallet, walletAddress }: MintWithWallet
           </p>
         </div>
 
-        <div>
-          <label className="block text-[11px] uppercase tracking-[0.2em] text-black/60 mb-2">
-            Student Email <span className="text-black/30 normal-case">(for V2 fallback)</span>
-          </label>
-          <input
-            type="email"
-            value={form.recipientEmail}
-            onChange={handleChange('recipientEmail')}
-            placeholder="student@example.edu"
-            className="w-full bg-transparent border-b-2 border-black py-3 text-base font-mono focus:outline-none focus:border-[#0033AD] placeholder:text-black/20"
-          />
-        </div>
-
-        <div>
-          <label className="block text-[11px] uppercase tracking-[0.2em] text-black/60 mb-2">
-            Student Email <span className="text-black/30 normal-case">(for V2 fallback)</span>
-          </label>
-          <input
-            type="email"
-            value={form.recipientEmail}
-            onChange={handleChange('recipientEmail')}
-            placeholder="student@example.edu"
-            className="w-full bg-transparent border-b-2 border-black py-3 text-base font-mono focus:outline-none focus:border-[#0033AD] placeholder:text-black/20"
-          />
-        </div>
-
         {/* Credential Title */}
         <div>
           <label className="block text-[11px] uppercase tracking-[0.2em] text-black/60 mb-2">
