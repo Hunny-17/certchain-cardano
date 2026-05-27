@@ -141,6 +141,109 @@ async function handleBuildTx(req, res) {
   }
 }
 
+// ─── Route: POST /api/mint/execute (V2 custody mint) ─────────
+
+async function handleV2Mint(req, res) {
+  let body;
+  try {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    body = JSON.parse(Buffer.concat(chunks).toString());
+  } catch {
+    return jsonResponse(res, 400, { error: 'Invalid JSON' });
+  }
+
+  const { recipient_email, recipient_name, cert_title, institution, issue_date, cert_type, notes } = body;
+  if (!recipient_name || !cert_title || !institution || !issue_date) {
+    return jsonResponse(res, 400, { error: 'Missing required fields' });
+  }
+
+  const mnemonic = process.env.CUSTODY_WALLET_MNEMONIC;
+  if (!mnemonic) return jsonResponse(res, 500, { error: 'CUSTODY_WALLET_MNEMONIC not set' });
+  if (!BLOCKFROST_KEY) return jsonResponse(res, 500, { error: 'BLOCKFROST_KEY not set' });
+
+  try {
+    const { MeshWallet, Transaction, ForgeScript, BlockfrostProvider, resolveScriptHash } = await import('@meshsdk/core');
+    const { createHash } = await import('node:crypto');
+
+    // Claim code
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = randomBytes(8);
+    const claimCode = Array.from(bytes).map(b => chars[b % chars.length]).join('');
+    const claimCodeHash = createHash('sha256').update(claimCode, 'utf8').digest('hex');
+
+    const blockfrost = new BlockfrostProvider(BLOCKFROST_KEY);
+    const custodyWallet = new MeshWallet({
+      networkId: 0,
+      fetcher: blockfrost,
+      submitter: blockfrost,
+      key: { type: 'mnemonic', words: mnemonic.trim().split(/\s+/) },
+    });
+    const custodyAddr = await custodyWallet.getChangeAddress();
+    const forgingScript = ForgeScript.withOneSignature(custodyAddr);
+    const policyId = resolveScriptHash(forgingScript);
+    const assetName = buildAssetName();
+
+    const tx = new Transaction({ initiator: custodyWallet });
+    tx.mintAsset(forgingScript, {
+      assetName,
+      assetQuantity: '1',
+      metadata: {
+        name: cert_title.slice(0, 64),
+        image: 'ipfs://placeholder',
+        mediaType: 'image/png',
+        description: `Issued by ${institution} on ${issue_date}`.slice(0, 64),
+        cert_type: (cert_type ?? 'credential').slice(0, 64),
+        institution: institution.slice(0, 64),
+        issue_date,
+        recipient_name: recipient_name.slice(0, 64),
+      },
+      label: '721',
+      recipient: custodyAddr,
+    });
+    tx.setMetadata(674, {
+      msg: [
+        'CertChain v2 credential',
+        `claim_hash:${claimCodeHash.slice(0, 16)}`,
+        `issuer:${custodyAddr.slice(0, 20)}`,
+      ],
+    });
+
+    const unsignedTx = await tx.build();
+    const signedTx = await custodyWallet.signTx(unsignedTx);
+    const txHash = await custodyWallet.submitTx(signedTx);
+    console.log('[v2-mint] success:', txHash);
+
+    const assetNameHex = Buffer.from(assetName, 'utf8').toString('hex');
+    const assetId = `${policyId}${assetNameHex}`;
+
+    // Supabase insert (best-effort)
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const sb = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+      await sb.from('certificates').insert({
+        tx_hash: txHash, asset_id: assetId, custody_address: custodyAddr,
+        issuer_address: custodyAddr, recipient_address: null,
+        recipient_name, recipient_email: recipient_email ?? null,
+        cert_title, cert_type: cert_type ?? null, institution, issue_date,
+        notes: notes ?? null, name_hash: null, student_id_hash: null, dob_hash: null,
+        claim_code_hash: claimCodeHash, status: 'pending',
+      });
+    } catch (dbErr) {
+      console.warn('[v2-mint] DB insert failed (tx already on-chain):', dbErr?.message);
+    }
+
+    return jsonResponse(res, 200, {
+      tx_hash: txHash, claim_code: claimCode, asset_id: assetId,
+      policy_id: policyId, asset_name: assetName, custody_address: custodyAddr,
+      cardanoscan_url: `https://preprod.cardanoscan.io/transaction/${txHash}`,
+    });
+  } catch (err) {
+    console.error('[v2-mint] error:', err?.message ?? String(err));
+    return jsonResponse(res, 500, { error: 'V2 mint failed', message: err.message ?? String(err) });
+  }
+}
+
 // ─── CBOR helpers (merge unsigned tx + witness set) ──────────
 
 /** Skip one CBOR value starting at buf[pos], return new pos. */
@@ -276,6 +379,10 @@ const server = http.createServer(async (req, res) => {
       'Access-Control-Allow-Headers': 'Content-Type',
     });
     return res.end();
+  }
+
+  if (req.method === 'POST' && req.url === '/api/mint/execute') {
+    return handleV2Mint(req, res);
   }
 
   if (req.method === 'POST' && req.url === '/api/v3/build-tx') {

@@ -42,7 +42,7 @@ export async function mintCertificate(req: MintRequest): Promise<MintSuccess> {
   const timeout = setTimeout(() => controller.abort(), 90_000);
 
   try {
-    const apiBase = import.meta.env.DEV ? "http://localhost:3000" : "";
+    const apiBase = "";
     const res = await fetch(`${apiBase}/api/mint/execute`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
