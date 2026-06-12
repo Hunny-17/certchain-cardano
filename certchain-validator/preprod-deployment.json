@@ -1,8 +1,8 @@
 {
   "scriptHash": "5ebb2e22cc21daddb23b63b4c817325c0e39f88283adef2f4643402d",
   "scriptAddress": "addr_test1wp0tkt3zessa4hdj8d3mfjqhxfwquw0cs2p6mme0gep5qtg8wn956",
-  "refTxHash": "29812a834991b00391c57fc2f2ffa39876f5b78188e7c5d889fdd38a233435af",
+  "refTxHash": "859db8bdb8eb1aa7856f6ff2b466954afb97a2df04e757cc9771862a92de2f49",
   "refTxIndex": 0,
   "network": "preprod",
-  "deployedAt": "2026-06-12T19:30:01.608Z"
+  "deployedAt": "2026-06-12T20:11:02.510Z"
 }

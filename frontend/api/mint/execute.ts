@@ -203,7 +203,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // 6. Build CIP-68 mint tx
-    const utxos = await wallet.getUtxos();
+    const allUtxos = await wallet.getUtxos();
+    // Exclude the reference script UTxO so coin selection doesn't spend it
+    const utxos = allUtxos.filter(
+      (u) => !(u.input.txHash === refTxHash && u.input.outputIndex === refTxIndex)
+    );
 
     const txBuilder = new MeshTxBuilder({ fetcher: provider, submitter: provider });
 
