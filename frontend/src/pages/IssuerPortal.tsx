@@ -211,6 +211,8 @@ export default function IssuerPortal() {
               handleChange={handleChange}
               handlePublish={handlePublish}
               mintError={mintError}
+              ipfsHash={ipfsHash}
+              onIpfsChange={setIpfsHash}
             />
           )}
           {phase === "publishing" && (
@@ -288,6 +290,8 @@ interface IdleViewProps {
   handleChange: (key: keyof FormState) => (e: FieldChangeEvent) => void;
   handlePublish: (e: SyntheticEvent<HTMLFormElement>) => void;
   mintError?: string;
+  ipfsHash: string;
+  onIpfsChange: (hash: string) => void;
 }
 
 function IdleView({
@@ -295,6 +299,8 @@ function IdleView({
   handleChange,
   handlePublish,
   mintError,
+  ipfsHash,
+  onIpfsChange,
 }: IdleViewProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
@@ -415,8 +421,8 @@ function IdleView({
             </label>
             <IpfsUpload
               currentHash={ipfsHash}
-              onUpload={setIpfsHash}
-              onClear={() => setIpfsHash("")}
+              onUpload={onIpfsChange}
+              onClear={() => onIpfsChange("")}
             />
           </div>
 
