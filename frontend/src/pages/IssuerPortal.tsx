@@ -98,6 +98,9 @@ export default function IssuerPortal() {
 
   const handlePublish = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Read honeypot BEFORE any await — React nullifies e.currentTarget after async
+    const hp = (e.currentTarget.elements.namedItem("website") as HTMLInputElement | null)?.value ?? "";
+
     if (!form.recipientName || !form.credentialTitle) return;
 
     setMintError("");
@@ -118,7 +121,6 @@ export default function IssuerPortal() {
       ]);
 
       // Call real mint API
-      const hp = (e.currentTarget.elements.namedItem("website") as HTMLInputElement | null)?.value ?? "";
       const result = await mintCertificate({
         recipient_email:
           form.recipientEmail ||
