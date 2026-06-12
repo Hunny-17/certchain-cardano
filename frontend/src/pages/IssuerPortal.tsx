@@ -11,6 +11,7 @@ import { useUserRole } from "../lib/useUserRole";
 import RoleBadge from "../components/RoleBadge";
 import { hashIdentity } from "../lib/hashUtils";
 import BulkIssueView from "../components/BulkIssueView";
+import IpfsUpload from "../components/IpfsUpload";
 import { mintCertificate } from "../lib/mintApi";
 // ============================================================================
 // CertChain — Issuer Portal (Mock)
@@ -89,6 +90,7 @@ export default function IssuerPortal() {
   const [currentTxHash, setCurrentTxHash] = useState<string>("");
   const [claimCode, setClaimCode] = useState<string>("");
   const [mintError, setMintError] = useState<string>("");
+  const [ipfsHash, setIpfsHash] = useState<string>("");
   const userRole = useUserRole();
 
   const handleChange = (key: keyof FormState) => (e: FieldChangeEvent) =>
@@ -116,6 +118,7 @@ export default function IssuerPortal() {
       ]);
 
       // Call real mint API
+      const hp = (e.currentTarget.elements.namedItem("website") as HTMLInputElement | null)?.value ?? "";
       const result = await mintCertificate({
         recipient_email:
           form.recipientEmail ||
@@ -126,6 +129,8 @@ export default function IssuerPortal() {
         issue_date: form.issueDate,
         cert_type: form.credentialType,
         notes: form.notes || undefined,
+        ipfs_hash: ipfsHash || undefined,
+        _hp: hp,
       });
 
       clearInterval(stepTimer);
@@ -160,6 +165,7 @@ export default function IssuerPortal() {
     setCurrentTxHash("");
     setClaimCode("");
     setMintError("");
+    setIpfsHash("");
   };
 
   const verifyUrl =
@@ -403,6 +409,18 @@ function IdleView({
           </div>
 
           <div>
+            <label className="block text-[11px] uppercase tracking-[0.2em] text-black/60 mb-2">
+              Certificate file{" "}
+              <span className="text-black/30 normal-case">(optional · PDF or image)</span>
+            </label>
+            <IpfsUpload
+              currentHash={ipfsHash}
+              onUpload={setIpfsHash}
+              onClear={() => setIpfsHash("")}
+            />
+          </div>
+
+          <div>
             <label
               htmlFor="notes"
               className="block text-[11px] uppercase tracking-[0.2em] text-black/60 mb-2"
@@ -426,6 +444,15 @@ function IdleView({
               Cardano blockchain. This action is irreversible.
             </p>
             {mintError && <p className="text-red-500 text-sm">{mintError}</p>}
+            {/* Honeypot — hidden from humans via CSS, bots auto-fill it */}
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              aria-hidden="true"
+              autoComplete="off"
+              style={{ position: "absolute", left: "-9999px", opacity: 0 }}
+            />
             <button
               type="submit"
               className="group relative bg-black text-[#FAFAF7] px-10 py-5 text-sm uppercase tracking-[0.2em] hover:bg-[#0033AD] transition-colors duration-200 border-2 border-black"

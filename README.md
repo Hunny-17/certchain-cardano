@@ -260,6 +260,25 @@ certchain/
 
 ---
 
+## 📚 Documentation
+
+| Document | Language | Description |
+|---|---|---|
+| [Admin Guide](docs/admin-guide-vi.md) | 🇻🇳 Vietnamese | Full issuer guide — login, single issue, bulk CSV, IPFS upload, troubleshooting |
+| [Verifier Guide](docs/verifier-guide-vi.md) | 🇻🇳 Vietnamese | 1-page verifier cheatsheet for HR and employers |
+| [Video Script](docs/video-script-vi.md) | 🇻🇳 Vietnamese | 5-minute demo video script (OBS) |
+| [Build PDFs](docs/build-pdf.ps1) | PowerShell | Convert docs to PDF via Pandoc + XeLaTeX |
+
+**Generate PDFs** (requires [Pandoc](https://pandoc.org) + [MiKTeX](https://miktex.org)):
+
+```powershell
+cd docs
+.\build-pdf.ps1 -Check   # verify dependencies
+.\build-pdf.ps1 -All     # build all PDFs
+```
+
+---
+
 ## 🚀 Quick Start (Web App)
 
 ### Prerequisites

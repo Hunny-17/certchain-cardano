@@ -28,19 +28,31 @@ import { z } from "zod";
 import { createHash, randomBytes } from "node:crypto";
 import { getCustodyWallet, getCustodyAddress } from "../_lib/custody-wallet.js";
 import { getServiceClient } from "../_lib/supabase-admin.js";
+import { insertAuditLog } from "../_lib/audit-log.js";
+import { requireUniversityMember, AuthError } from "../_lib/auth.js";
+import { mintRatelimit } from "../_lib/ratelimit.js";
 
 // ─── Input schema ─────────────────────────────────────────────────
 
 const MintRequestSchema = z.object({
-  recipient_email: z.string().email().max(200),
-  recipient_name: z.string().min(1).max(200),
-  cert_title: z.string().min(1).max(200),
-  institution: z.string().min(1).max(200),
+  recipient_email: z.string().trim().email().max(200),
+  recipient_name: z.string().trim().min(1, "recipient_name cannot be blank").max(200),
+  cert_title: z.string().trim().min(1, "cert_title cannot be blank").max(200),
+  institution: z.string().trim().min(1, "institution cannot be blank").max(200),
   issue_date: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "issue_date must be YYYY-MM-DD"),
-  cert_type: z.string().max(100).optional(),
-  notes: z.string().max(1000).optional(),
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "issue_date must be YYYY-MM-DD")
+    .refine((s) => !isNaN(new Date(s).getTime()), "issue_date is not a valid calendar date")
+    .refine((s) => {
+      const d = new Date(s + "T00:00:00Z");
+      const min = new Date("1900-01-01T00:00:00Z");
+      const max = new Date();
+      max.setFullYear(max.getFullYear() + 1);
+      return d >= min && d <= max;
+    }, "issue_date must be between 1900-01-01 and 1 year from today"),
+  cert_type: z.string().trim().max(100).optional(),
+  notes: z.string().trim().max(1000).optional(),
+  ipfs_hash: z.string().trim().max(200).optional(),
 });
 
 type MintRequest = z.infer<typeof MintRequestSchema>;
@@ -89,11 +101,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  const ip =
+    (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0].trim() ??
+    req.socket?.remoteAddress ??
+    undefined;
+
+  // 0. Auth — must have verified university membership with issuer role
+  let authResult: Awaited<ReturnType<typeof requireUniversityMember>>;
+  try {
+    authResult = await requireUniversityMember(req, "issuer");
+  } catch (err) {
+    if (err instanceof AuthError) {
+      await insertAuditLog({
+        event_type: "auth_error",
+        ip_address: ip,
+        error_message: err.message,
+      });
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+  const { userId, membership } = authResult;
+
+  // Rate limit — keyed by userId (post-auth, so no IP spoofing risk)
+  const { success: rlSuccess, reset: rlReset } = await mintRatelimit.limit(userId);
+  if (!rlSuccess) {
+    const retryAfter = Math.ceil((rlReset - Date.now()) / 1000);
+    res.setHeader("Retry-After", String(retryAfter));
+    res.status(429).json({ error: "Rate limit exceeded", retryAfter });
+    return;
+  }
+
+  // Honeypot check — bots auto-fill this field, humans never see it
+  if (typeof req.body?._hp === "string" && req.body._hp.trim().length > 0) {
+    res.status(400).json({ error: "Invalid request body" });
+    return;
+  }
+
   // 1. Validate input
   let body: MintRequest;
   try {
     body = MintRequestSchema.parse(req.body);
   } catch (err: any) {
+    await insertAuditLog({
+      event_type: "validation_error",
+      ip_address: ip,
+      error_message: JSON.stringify(err.errors ?? err.message),
+    });
     res.status(400).json({
       error: "Invalid request body",
       details: err.errors ?? err.message,
@@ -120,14 +175,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // In Mesh.js v1.8.x, policy_id is derived from the forge script.
     // We compute asset_id post-mint from the tx to store in Supabase.
 
+    // Force institution from auth context — never trust user input for this
+    const institutionName = membership.university.name;
+
     const cip25Metadata: AssetMetadata = {
       name: body.cert_title,
-      image: "ipfs://placeholder", // V3 will upload real cert image
+      image: body.ipfs_hash ? `ipfs://${body.ipfs_hash}` : "ipfs://placeholder",
       mediaType: "image/png",
-      description: `Issued by ${body.institution} on ${body.issue_date}`,
+      description: `Issued by ${institutionName} on ${body.issue_date}`,
       // Custom CertChain fields
       cert_type: body.cert_type ?? "credential",
-      institution: body.institution,
+      institution: institutionName,
       issue_date: body.issue_date,
       recipient_name: body.recipient_name,
       // Note: recipient_email + claim_code_hash kept OFF-chain only (privacy)
@@ -178,7 +236,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       recipient_email: body.recipient_email,
       cert_title: body.cert_title,
       cert_type: body.cert_type ?? null,
-      institution: body.institution,
+      institution: institutionName,
+      university_id: membership.university_id,
       issue_date: body.issue_date,
       notes: body.notes ?? null,
       // PII hashes — V2 leaves null, V3 will populate when identity flow added
@@ -192,6 +251,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (dbError) {
       // Tx already on-chain at this point — log but don't fail
       console.error("DB insert failed but tx submitted:", dbError);
+      await insertAuditLog({
+        event_type: "mint_db_error",
+        tx_hash: txHash,
+        asset_id: assetId,
+        institution: institutionName,
+        university_id: membership.university_id,
+        recipient_email: body.recipient_email,
+        ip_address: ip,
+        error_message: dbError.message,
+        request_body: { cert_title: body.cert_title, institution: institutionName, issue_date: body.issue_date, cert_type: body.cert_type },
+      });
       res.status(207).json({
         warning: "Tx submitted on-chain but DB insert failed",
         tx_hash: txHash,
@@ -204,6 +274,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 10. Success
+    await insertAuditLog({
+      event_type: "mint_success",
+      tx_hash: txHash,
+      asset_id: assetId,
+      institution: institutionName,
+      university_id: membership.university_id,
+      recipient_email: body.recipient_email,
+      ip_address: ip,
+      request_body: { cert_title: body.cert_title, institution: institutionName, issue_date: body.issue_date, cert_type: body.cert_type },
+    });
     res.status(200).json({
       tx_hash: txHash,
       claim_code: claimCode, // ⚠️ Show once, issuer must save
@@ -215,9 +295,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err: any) {
     console.error("Mint failed:", err);
-    res.status(500).json({
-      error: "Mint failed",
-      message: err.message ?? String(err),
+    await insertAuditLog({
+      event_type: "mint_failure",
+      institution: (req.body as any)?.institution,
+      recipient_email: (req.body as any)?.recipient_email,
+      ip_address: ip,
+      error_message: err.message ?? String(err),
     });
+    res.status(500).json({ error: "Mint failed. Please try again." });
   }
 }
