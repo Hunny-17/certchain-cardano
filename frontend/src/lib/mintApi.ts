@@ -5,6 +5,7 @@
  * Used by IssuerPortal to mint real CertChain credentials on Preprod.
  * ────────────────────────────────────────────────────────────────
  */
+import { supabase } from "./supabase";
 
 export interface MintRequest {
   recipient_email: string;
@@ -14,6 +15,8 @@ export interface MintRequest {
   issue_date: string; // YYYY-MM-DD
   cert_type?: string;
   notes?: string;
+  ipfs_hash?: string; // CID from /api/ipfs/upload — omit to keep placeholder
+  _hp?: string; // honeypot — must be empty, bots fill it
 }
 
 export interface MintSuccess {
@@ -42,10 +45,15 @@ export async function mintCertificate(req: MintRequest): Promise<MintSuccess> {
   const timeout = setTimeout(() => controller.abort(), 90_000);
 
   try {
-    const apiBase = import.meta.env.DEV ? "http://localhost:3000" : "";
-    const res = await fetch(`${apiBase}/api/mint/execute`, {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const res = await fetch(`/api/mint/execute`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(req),
       signal: controller.signal,
     });

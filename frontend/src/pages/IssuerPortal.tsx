@@ -11,6 +11,7 @@ import { useUserRole } from "../lib/useUserRole";
 import RoleBadge from "../components/RoleBadge";
 import { hashIdentity } from "../lib/hashUtils";
 import BulkIssueView from "../components/BulkIssueView";
+import IpfsUpload from "../components/IpfsUpload";
 import { mintCertificate } from "../lib/mintApi";
 // ============================================================================
 // CertChain — Issuer Portal (Mock)
@@ -41,9 +42,21 @@ interface PublishStep {
 }
 
 const PUBLISH_STEPS: PublishStep[] = [
-  { id: 1, label: "Building mint transaction", detail: "Mesh.js · CIP-25 + CIP-20 metadata" },
-  { id: 2, label: "Signing with custody wallet", detail: "Ed25519 · single-sig forge script" },
-  { id: 3, label: "Submitting to Cardano Preprod", detail: "Blockfrost · ~30s confirmation" },
+  {
+    id: 1,
+    label: "Building mint transaction",
+    detail: "Mesh.js · CIP-25 + CIP-20 metadata",
+  },
+  {
+    id: 2,
+    label: "Signing with custody wallet",
+    detail: "Ed25519 · single-sig forge script",
+  },
+  {
+    id: 3,
+    label: "Submitting to Cardano Preprod",
+    detail: "Blockfrost · ~30s confirmation",
+  },
 ];
 
 const CREDENTIAL_TYPES = [
@@ -57,10 +70,10 @@ const CREDENTIAL_TYPES = [
 const initialForm: FormState = {
   recipientName: "",
   recipientEmail: "",
-  recipientStudentId: "", 
+  recipientStudentId: "",
   recipientDob: "",
   credentialTitle: "",
-  institution: "Văn Hiến University",
+  institution: " University",
   issueDate: new Date().toISOString().slice(0, 10),
   credentialType: "Diploma",
   notes: "",
@@ -77,11 +90,11 @@ export default function IssuerPortal() {
   const [currentTxHash, setCurrentTxHash] = useState<string>("");
   const [claimCode, setClaimCode] = useState<string>("");
   const [mintError, setMintError] = useState<string>("");
+  const [ipfsHash, setIpfsHash] = useState<string>("");
   const userRole = useUserRole();
 
-  const handleChange =
-    (key: keyof FormState) => (e: FieldChangeEvent) =>
-      setForm((f) => ({ ...f, [key]: e.target.value }));
+  const handleChange = (key: keyof FormState) => (e: FieldChangeEvent) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const handlePublish = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -105,14 +118,19 @@ export default function IssuerPortal() {
       ]);
 
       // Call real mint API
+      const hp = (e.currentTarget.elements.namedItem("website") as HTMLInputElement | null)?.value ?? "";
       const result = await mintCertificate({
-        recipient_email: form.recipientEmail || `${form.recipientName.toLowerCase().replace(/\s+/g, ".")}@unknown.local`,
+        recipient_email:
+          form.recipientEmail ||
+          `${form.recipientName.toLowerCase().replace(/\s+/g, ".")}@unknown.local`,
         recipient_name: form.recipientName,
         cert_title: form.credentialTitle,
         institution: form.institution,
         issue_date: form.issueDate,
         cert_type: form.credentialType,
         notes: form.notes || undefined,
+        ipfs_hash: ipfsHash || undefined,
+        _hp: hp,
       });
 
       clearInterval(stepTimer);
@@ -140,13 +158,14 @@ export default function IssuerPortal() {
     }
   };
 
-const reset = () => {
+  const reset = () => {
     setPhase("idle");
     setActiveStep(0);
     setForm(initialForm);
     setCurrentTxHash("");
     setClaimCode("");
     setMintError("");
+    setIpfsHash("");
   };
 
   const verifyUrl =
@@ -184,7 +203,7 @@ const reset = () => {
         {(phase === "idle" || phase === "bulk" || phase === "history") && (
           <TabSwitcher phase={phase} setPhase={setPhase} />
         )}
-        
+
         <div key={phase} className="phase-enter">
           {phase === "idle" && (
             <IdleView
@@ -192,6 +211,8 @@ const reset = () => {
               handleChange={handleChange}
               handlePublish={handlePublish}
               mintError={mintError}
+              ipfsHash={ipfsHash}
+              onIpfsChange={setIpfsHash}
             />
           )}
           {phase === "publishing" && (
@@ -206,13 +227,10 @@ const reset = () => {
               onReset={reset}
             />
           )}
-          {phase === "history" && (
-          <HistoryView setPhase={setPhase} />
-          )}
+          {phase === "history" && <HistoryView setPhase={setPhase} />}
           {phase === "bulk" && (
-          <BulkIssueView onComplete={() => setPhase("history")} />
+            <BulkIssueView onComplete={() => setPhase("history")} />
           )}
-
         </div>
       </main>
 
@@ -272,9 +290,18 @@ interface IdleViewProps {
   handleChange: (key: keyof FormState) => (e: FieldChangeEvent) => void;
   handlePublish: (e: SyntheticEvent<HTMLFormElement>) => void;
   mintError?: string;
+  ipfsHash: string;
+  onIpfsChange: (hash: string) => void;
 }
 
-function IdleView({ form, handleChange, handlePublish, mintError }: IdleViewProps) {
+function IdleView({
+  form,
+  handleChange,
+  handlePublish,
+  mintError,
+  ipfsHash,
+  onIpfsChange,
+}: IdleViewProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
       {/* LEFT — Form */}
@@ -295,15 +322,17 @@ function IdleView({ form, handleChange, handlePublish, mintError }: IdleViewProp
           <em className="italic text-[#0033AD]">credential</em>.
         </h1>
         <p className="text-sm text-black/60 mb-12 max-w-md leading-relaxed">
-          Fill in the recipient and credential details. The hash is anchored
-          on Cardano Preprod via CIP-20 metadata. Verification is permanent.
+          Fill in the recipient and credential details. The hash is anchored on
+          Cardano Preprod via CIP-20 metadata. Verification is permanent.
         </p>
         {mintError && (
           <div className="border-2 border-red-600 bg-red-50 p-4 mb-8">
             <div className="text-[10px] uppercase tracking-[0.2em] text-red-700 mb-1">
               ✗ Mint Failed
             </div>
-            <div className="text-sm text-red-900 font-mono break-words">{mintError}</div>
+            <div className="text-sm text-red-900 font-mono break-words">
+              {mintError}
+            </div>
           </div>
         )}
         <form onSubmit={handlePublish} className="space-y-8">
@@ -338,7 +367,8 @@ function IdleView({ form, handleChange, handlePublish, mintError }: IdleViewProp
             />
           </div>
           <p className="text-[10px] uppercase tracking-[0.2em] text-black/50 -mt-4">
-            ↑ SHA-256 hashed on-chain · plaintext never anchored · privacy-preserving
+            ↑ SHA-256 hashed on-chain · plaintext never anchored ·
+            privacy-preserving
           </p>
 
           <Field
@@ -364,7 +394,10 @@ function IdleView({ form, handleChange, handlePublish, mintError }: IdleViewProp
           </div>
 
           <div>
-            <label htmlFor="credential-type" className="block text-[11px] uppercase tracking-[0.2em] text-black/60 mb-2">
+            <label
+              htmlFor="credential-type"
+              className="block text-[11px] uppercase tracking-[0.2em] text-black/60 mb-2"
+            >
               Credential Type
             </label>
             <select
@@ -382,8 +415,24 @@ function IdleView({ form, handleChange, handlePublish, mintError }: IdleViewProp
           </div>
 
           <div>
-            <label htmlFor="notes" className="block text-[11px] uppercase tracking-[0.2em] text-black/60 mb-2">
-              Notes <span className="text-black/30 normal-case">(optional)</span>
+            <label className="block text-[11px] uppercase tracking-[0.2em] text-black/60 mb-2">
+              Certificate file{" "}
+              <span className="text-black/30 normal-case">(optional · PDF or image)</span>
+            </label>
+            <IpfsUpload
+              currentHash={ipfsHash}
+              onUpload={onIpfsChange}
+              onClear={() => onIpfsChange("")}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="notes"
+              className="block text-[11px] uppercase tracking-[0.2em] text-black/60 mb-2"
+            >
+              Notes{" "}
+              <span className="text-black/30 normal-case">(optional)</span>
             </label>
             <textarea
               id="notes"
@@ -400,9 +449,16 @@ function IdleView({ form, handleChange, handlePublish, mintError }: IdleViewProp
               By publishing you consent to recording a metadata hash on the
               Cardano blockchain. This action is irreversible.
             </p>
-            {mintError && (
-              <p className="text-red-500 text-sm">{mintError}</p>
-            )}
+            {mintError && <p className="text-red-500 text-sm">{mintError}</p>}
+            {/* Honeypot — hidden from humans via CSS, bots auto-fill it */}
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              aria-hidden="true"
+              autoComplete="off"
+              style={{ position: "absolute", left: "-9999px", opacity: 0 }}
+            />
             <button
               type="submit"
               className="group relative bg-black text-[#FAFAF7] px-10 py-5 text-sm uppercase tracking-[0.2em] hover:bg-[#0033AD] transition-colors duration-200 border-2 border-black"
@@ -460,7 +516,11 @@ function PublishingView({ form, activeStep }: PublishingViewProps) {
       <div className="space-y-1 border-2 border-black bg-white">
         {PUBLISH_STEPS.map((step, idx) => {
           const status =
-            idx < activeStep ? "done" : idx === activeStep ? "active" : "pending";
+            idx < activeStep
+              ? "done"
+              : idx === activeStep
+                ? "active"
+                : "pending";
           return (
             <div
               key={step.id}
@@ -474,8 +534,8 @@ function PublishingView({ form, activeStep }: PublishingViewProps) {
                   status === "done"
                     ? "bg-[#0033AD] text-white border-[#0033AD]"
                     : status === "active"
-                    ? "bg-black text-white"
-                    : "bg-transparent text-black/30"
+                      ? "bg-black text-white"
+                      : "bg-transparent text-black/30"
                 }`}
               >
                 {status === "done" ? (
@@ -530,7 +590,13 @@ interface SuccessViewProps {
   onReset: () => void;
 }
 
-function SuccessView({ form, txHash, claimCode, verifyUrl, onReset }: SuccessViewProps) {
+function SuccessView({
+  form,
+  txHash,
+  claimCode,
+  verifyUrl,
+  onReset,
+}: SuccessViewProps) {
   const [copied, setCopied] = useState(false);
   const [claimCodeCopied, setClaimCodeCopied] = useState(false);
   const [claimCodeAcknowledged, setClaimCodeAcknowledged] = useState(false);
@@ -604,8 +670,9 @@ function SuccessView({ form, txHash, claimCode, verifyUrl, onReset }: SuccessVie
               </button>
             </div>
             <p className="text-xs text-black/70 mb-4 leading-relaxed">
-              Share this 8-character code with the recipient via secure channel (email, SMS, or in-person).
-              Only the SHA-256 hash is stored — the original code is shown once on this screen.
+              Share this 8-character code with the recipient via secure channel
+              (email, SMS, or in-person). Only the SHA-256 hash is stored — the
+              original code is shown once on this screen.
             </p>
             <button
               onClick={() => setClaimCodeAcknowledged(true)}
@@ -621,7 +688,9 @@ function SuccessView({ form, txHash, claimCode, verifyUrl, onReset }: SuccessVie
             Transaction Hash
           </div>
           <div className="flex items-center justify-between gap-4">
-            <code className="text-sm md:text-base break-all">{truncatedHash}</code>
+            <code className="text-sm md:text-base break-all">
+              {truncatedHash}
+            </code>
             <button
               onClick={copyHash}
               className="text-[10px] uppercase tracking-[0.2em] border-2 border-black px-3 py-2 hover:bg-black hover:text-[#FAFAF7] transition-colors shrink-0"
@@ -706,8 +775,7 @@ function SuccessView({ form, txHash, claimCode, verifyUrl, onReset }: SuccessVie
 // ============================================================================
 // Sub-components
 // ============================================================================
-interface FieldProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+interface FieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   required?: boolean;
 }
@@ -730,9 +798,7 @@ function TabSwitcher({
       <button
         onClick={() => setPhase("idle")}
         className={`py-3 border-r-2 border-black transition-colors ${
-          phase === "idle"
-            ? "bg-black text-[#FAFAF7]"
-            : "hover:bg-black/5"
+          phase === "idle" ? "bg-black text-[#FAFAF7]" : "hover:bg-black/5"
         }`}
       >
         ▶ Issue New
@@ -740,9 +806,7 @@ function TabSwitcher({
       <button
         onClick={() => setPhase("bulk")}
         className={`py-3 border-r-2 border-black transition-colors ${
-          phase === "bulk"
-            ? "bg-black text-[#FAFAF7]"
-            : "hover:bg-black/5"
+          phase === "bulk" ? "bg-black text-[#FAFAF7]" : "hover:bg-black/5"
         }`}
       >
         ⊕ Bulk Issue
@@ -750,9 +814,7 @@ function TabSwitcher({
       <button
         onClick={() => setPhase("history")}
         className={`py-3 transition-colors ${
-          phase === "history"
-            ? "bg-black text-[#FAFAF7]"
-            : "hover:bg-black/5"
+          phase === "history" ? "bg-black text-[#FAFAF7]" : "hover:bg-black/5"
         }`}
       >
         ⌗ History {count > 0 && <span className="opacity-70">({count})</span>}
@@ -772,15 +834,18 @@ function HistoryView({ setPhase }: { setPhase: (p: Phase) => void }) {
   useEffect(() => {
     const all = listMockCredentials();
     all.sort((a, b) => b._issuedAt - a._issuedAt);
-    setCredentials(all);
+    const unique = Array.from(new Map(all.map((c) => [c.txHash, c])).values());
+    setCredentials(unique);
   }, []);
 
   const filtered = credentials.filter((c) => {
     if (filter === "all") return true;
+    const issuedAt = Number(c._issuedAt) || 0;
+    if (!issuedAt) return false;
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
-    if (filter === "today") return now - c._issuedAt < dayMs;
-    if (filter === "week") return now - c._issuedAt < 7 * dayMs;
+    if (filter === "today") return now - issuedAt < dayMs;
+    if (filter === "week") return now - issuedAt < 7 * dayMs;
     return true;
   });
 
@@ -827,9 +892,7 @@ function HistoryView({ setPhase }: { setPhase: (p: Phase) => void }) {
               key={f}
               onClick={() => setFilter(f)}
               className={`text-[10px] uppercase tracking-[0.15em] px-3 py-2 border-2 border-black transition-colors ${
-                filter === f
-                  ? "bg-black text-[#FAFAF7]"
-                  : "hover:bg-black/5"
+                filter === f ? "bg-black text-[#FAFAF7]" : "hover:bg-black/5"
               }`}
             >
               {f === "all" ? "All" : f === "today" ? "Today" : "This week"}
@@ -852,20 +915,16 @@ function HistoryView({ setPhase }: { setPhase: (p: Phase) => void }) {
             <div className="col-span-3 md:col-span-2 text-right md:text-left">
               Issued
             </div>
-            <div className="col-span-1 hidden md:block text-right">
-              Status
-            </div>
+            <div className="col-span-1 hidden md:block text-right">Status</div>
           </div>
 
-          {filtered.map((cred) => (
+          {filtered.map((cred, index) => (
             <HistoryRow
-              key={cred.txHash}
+              key={cred.txHash + "-" + index}
               credential={cred}
               expanded={expandedTx === cred.txHash}
               onToggle={() =>
-                setExpandedTx(
-                  expandedTx === cred.txHash ? null : cred.txHash,
-                )
+                setExpandedTx(expandedTx === cred.txHash ? null : cred.txHash)
               }
             />
           ))}

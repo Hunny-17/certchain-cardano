@@ -213,6 +213,7 @@ function CredentialsList({
 function CredentialCard({ credential }: { credential: StoredMockCredential }) {
   const [showQR, setShowQR] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showFullscreen, setShowFullscreen] = useState(false);
 
   const verifyUrl =
     typeof window !== "undefined"
@@ -286,17 +287,53 @@ function CredentialCard({ credential }: { credential: StoredMockCredential }) {
       {/* Middle — QR (collapsible) */}
       {showQR && (
         <div className="p-5 md:p-6 border-b-2 border-black bg-[#FAFAF7] flex flex-col items-center">
-          <div className="bg-white p-3 border-2 border-black">
+          <button
+            type="button"
+            onClick={() => setShowFullscreen(true)}
+            className="bg-white p-4 border-2 border-black hover:border-[#0033AD] transition-colors cursor-zoom-in"
+            title="Tap to expand"
+          >
             <QRCodeSVG
               value={verifyUrl}
-              size={160}
-              level="H"
+              size={200}
+              level="Q"
               fgColor="#000000"
               bgColor="#FFFFFF"
             />
-          </div>
+          </button>
           <div className="mt-3 text-[9px] uppercase tracking-[0.2em] text-black/50 text-center">
-            Scan to verify on Cardano
+            Scan to verify · tap to expand
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen QR overlay */}
+      {showFullscreen && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80"
+          onClick={() => setShowFullscreen(false)}
+        >
+          <div
+            className="bg-white p-6 border-4 border-black flex flex-col items-center gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <QRCodeSVG
+              value={verifyUrl}
+              size={300}
+              level="Q"
+              fgColor="#000000"
+              bgColor="#FFFFFF"
+            />
+            <div className="text-[9px] uppercase tracking-[0.2em] text-black/50 text-center">
+              Scan to verify on Cardano
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowFullscreen(false)}
+              className="border-2 border-black px-6 py-2 text-[10px] uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-colors"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

@@ -1,10 +1,5 @@
-import { useState, useEffect } from "react";
-import {
-  generateMockTxHash,
-  saveMockCredential,
-  type MockCredentialInput,
-} from "../lib/credentialStore";
-import { hashIdentity } from "../lib/hashUtils";
+import { useState, useEffect, useRef } from "react";
+import { mintCertificate } from "../lib/mintApi";
 
 // ============================================================================
 // BulkIssueView — V1 mock for batch credential issuance.
@@ -26,26 +21,29 @@ interface CsvRow {
   recipientDob: string;
   credentialTitle: string;
   credentialType: string;
+  institution: string;
+  issue_date: string;
   errors: string[];
 }
 
 interface ProcessedRow {
   row: CsvRow;
-  status: "queued" | "hashing" | "anchoring" | "done" | "error";
+  status: "queued" | "submitting" | "done" | "error";
   txHash?: string;
+  errorMessage?: string;
 }
 
-const SAMPLE_TEMPLATE = `recipientName,recipientEmail,recipientStudentId,recipientDob,credentialTitle,credentialType
-Trần Quốc Huy,huy@vhu.edu.vn,VHU2024001,2003-04-15,Bachelor of Computer Science,Diploma
-Nguyễn Thanh Tùng,tung@vhu.edu.vn,VHU2024002,2003-07-22,Bachelor of Computer Science,Diploma
-Hoàng Thị Kim Ngân,ngan@vhu.edu.vn,VHU2024003,2003-11-03,Bachelor of Information Technology,Diploma
-Trần Minh Nhật,nhat@vhu.edu.vn,VHU2024004,2003-02-18,Bachelor of Software Engineering,Diploma
-Lê Hồng Phúc,phuc@vhu.edu.vn,VHU2024005,2003-05-30,Bachelor of Computer Science,Diploma
-Phạm Văn Đức,duc@vhu.edu.vn,VHU2024006,2003-09-12,Bachelor of Data Science,Diploma
-Đặng Thị Mai,mai@vhu.edu.vn,VHU2024007,2003-12-08,Bachelor of Cybersecurity,Diploma
-Vũ Quang Linh,linh@vhu.edu.vn,VHU2024008,2003-03-25,Bachelor of AI,Diploma
-Bùi Thị Hương,huong@vhu.edu.vn,VHU2024009,2003-08-14,Bachelor of Computer Science,Diploma
-Đỗ Văn Tài,tai@vhu.edu.vn,VHU2024010,2003-06-19,Bachelor of Information Technology,Diploma`;
+const SAMPLE_TEMPLATE = `recipientName,recipientEmail,recipientStudentId,recipientDob,credentialTitle,credentialType,institution,issue_date
+Trần Quốc Huy,huy@vhu.edu.vn,VHU2024001,2003-04-15,Bachelor of Computer Science,Diploma,Văn Hiến University,2026-06-12
+Nguyễn Thanh Tùng,tung@vhu.edu.vn,VHU2024002,2003-07-22,Bachelor of Computer Science,Diploma,Văn Hiến University,2026-06-12
+Hoàng Thị Kim Ngân,ngan@vhu.edu.vn,VHU2024003,2003-11-03,Bachelor of Information Technology,Diploma,Văn Hiến University,2026-06-12
+Trần Minh Nhật,nhat@vhu.edu.vn,VHU2024004,2003-02-18,Bachelor of Software Engineering,Diploma,Văn Hiến University,2026-06-12
+Lê Hồng Phúc,phuc@vhu.edu.vn,VHU2024005,2003-05-30,Bachelor of Computer Science,Diploma,Văn Hiến University,2026-06-12
+Phạm Văn Đức,duc@vhu.edu.vn,VHU2024006,2003-09-12,Bachelor of Data Science,Diploma,Văn Hiến University,2026-06-12
+Đặng Thị Mai,mai@vhu.edu.vn,VHU2024007,2003-12-08,Bachelor of Cybersecurity,Diploma,Văn Hiến University,2026-06-12
+Vũ Quang Linh,linh@vhu.edu.vn,VHU2024008,2003-03-25,Bachelor of AI,Diploma,Văn Hiến University,2026-06-12
+Bùi Thị Hương,huong@vhu.edu.vn,VHU2024009,2003-08-14,Bachelor of Computer Science,Diploma,Văn Hiến University,2026-06-12
+Đỗ Văn Tài,tai@vhu.edu.vn,VHU2024010,2003-06-19,Bachelor of Information Technology,Diploma,Văn Hiến University,2026-06-12`;
 
 export default function BulkIssueView({
   onComplete,
@@ -57,6 +55,9 @@ export default function BulkIssueView({
   const [processed, setProcessed] = useState<ProcessedRow[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  const abortRef = useRef(false);
+  const [isAborting, setIsAborting] = useState(false);
+  const processingStartRef = useRef<number>(0);
 
   // ----------------------------------------------------------------------------
   // Phase: input → preview
@@ -68,6 +69,7 @@ export default function BulkIssueView({
     const required = [
       "recipientName",
       "credentialTitle",
+      "institution",
     ];
 
     const result: CsvRow[] = [];
@@ -90,6 +92,8 @@ export default function BulkIssueView({
         recipientDob: row.recipientDob || "",
         credentialTitle: row.credentialTitle || "",
         credentialType: row.credentialType || "Diploma",
+        institution: row.institution || "",
+        issue_date: row.issue_date || new Date().toISOString().slice(0, 10),
         errors,
       });
     }
@@ -131,6 +135,9 @@ export default function BulkIssueView({
   // Phase: preview → processing → complete
   // ----------------------------------------------------------------------------
   const startProcessing = () => {
+    abortRef.current = false;
+    setIsAborting(false);
+    processingStartRef.current = Date.now();
     const valid = rows.filter((r) => r.errors.length === 0);
     setProcessed(
       valid.map((row) => ({ row, status: "queued" as const })),
@@ -139,65 +146,69 @@ export default function BulkIssueView({
     setPhase("processing");
   };
 
-  // Drive processing animation: 1 row every ~700ms
   useEffect(() => {
     if (phase !== "processing") return;
+
+    // Abort: current row already finished (effect ran after setActiveIdx),
+    // stop before starting the next one. Don't cancel in-flight txs.
+    if (abortRef.current) {
+      abortRef.current = false;
+      setIsAborting(false);
+      setPhase("complete");
+      return;
+    }
+
     if (activeIdx >= processed.length) {
       const t = setTimeout(() => setPhase("complete"), 500);
       return () => clearTimeout(t);
     }
 
+    // Skip already-done rows (happens on retry pass)
+    if (processed[activeIdx]?.status === "done") {
+      setActiveIdx((i) => i + 1);
+      return;
+    }
+
     let cancelled = false;
     const processRow = async () => {
-      // Stage 1: hashing
-      setProcessed((prev) =>
-        prev.map((p, i) =>
-          i === activeIdx ? { ...p, status: "hashing" } : p,
-        ),
-      );
-      await new Promise((r) => setTimeout(r, 250));
-
       const row = processed[activeIdx]?.row;
       if (!row || cancelled) return;
 
-      const [name_hash, student_id_hash, dob_hash] = await Promise.all([
-        hashIdentity(row.recipientName),
-        row.recipientStudentId ? hashIdentity(row.recipientStudentId) : "",
-        row.recipientDob ? hashIdentity(row.recipientDob) : "",
-      ]);
-
-      // Stage 2: anchoring
       setProcessed((prev) =>
         prev.map((p, i) =>
-          i === activeIdx ? { ...p, status: "anchoring" } : p,
+          i === activeIdx ? { ...p, status: "submitting" } : p,
         ),
       );
-      await new Promise((r) => setTimeout(r, 350));
 
-      const txHash = generateMockTxHash();
-      const credentialInput: MockCredentialInput = {
-        recipientName: row.recipientName,
-        recipientEmail: row.recipientEmail,
-        recipientStudentId: row.recipientStudentId,
-        recipientDob: row.recipientDob,
-        credentialTitle: row.credentialTitle,
-        institution: "Văn Hiến University",
-        issueDate: new Date().toISOString().slice(0, 10),
-        credentialType: row.credentialType,
-        notes: "Bulk-issued via CSV",
-        _hashes: { name_hash, student_id_hash, dob_hash },
-      };
-      saveMockCredential(txHash, credentialInput);
+      try {
+        const result = await mintCertificate({
+          recipient_name: row.recipientName,
+          recipient_email:
+            row.recipientEmail ||
+            `${row.recipientName.toLowerCase().replace(/\s+/g, ".")}@unknown.local`,
+          cert_title: row.credentialTitle,
+          institution: row.institution,
+          issue_date: row.issue_date,
+          cert_type: row.credentialType || "Diploma",
+          notes: "Bulk-issued via CSV",
+        });
 
-      if (cancelled) return;
+        if (cancelled) return;
+        setProcessed((prev) =>
+          prev.map((p, i) =>
+            i === activeIdx ? { ...p, status: "done", txHash: result.tx_hash } : p,
+          ),
+        );
+      } catch (e: unknown) {
+        if (cancelled) return;
+        const msg = e instanceof Error ? e.message : "Mint failed";
+        setProcessed((prev) =>
+          prev.map((p, i) =>
+            i === activeIdx ? { ...p, status: "error", errorMessage: msg } : p,
+          ),
+        );
+      }
 
-      // Stage 3: done
-      setProcessed((prev) =>
-        prev.map((p, i) =>
-          i === activeIdx ? { ...p, status: "done", txHash } : p,
-        ),
-      );
-      await new Promise((r) => setTimeout(r, 100));
       setActiveIdx((i) => i + 1);
     };
 
@@ -212,10 +223,27 @@ export default function BulkIssueView({
   // Reset
   // ----------------------------------------------------------------------------
   const reset = () => {
+    abortRef.current = false;
+    setIsAborting(false);
     setPhase("input");
     setRows([]);
     setProcessed([]);
     setActiveIdx(0);
+  };
+
+  const handleRetry = () => {
+    abortRef.current = false;
+    setIsAborting(false);
+    processingStartRef.current = Date.now();
+    setProcessed((prev) =>
+      prev.map((p) =>
+        p.status === "error"
+          ? { ...p, status: "queued" as const, txHash: undefined, errorMessage: undefined }
+          : p,
+      ),
+    );
+    setActiveIdx(0);
+    setPhase("processing");
   };
 
   // ============================================================================
@@ -412,14 +440,30 @@ export default function BulkIssueView({
 
   if (phase === "processing") {
     const doneCount = processed.filter((p) => p.status === "done").length;
+    const errorInProgress = processed.filter((p) => p.status === "error").length;
+    const settledCount = doneCount + errorInProgress;
+    const queuedCount = processed.filter((p) => p.status === "queued").length;
     const total = processed.length;
-    const progress = Math.round((doneCount / total) * 100);
+    const progress = Math.round((settledCount / total) * 100);
+
+    // Adaptive ETA: use actual avg after 2 settled rows, else fixed 65s/row
+    const SECONDS_PER_MINT = 65;
+    let etaText: string;
+    if (settledCount >= 2 && processingStartRef.current > 0) {
+      const elapsed = (Date.now() - processingStartRef.current) / 1000;
+      const avgPerRow = elapsed / settledCount;
+      const etaSecs = Math.round(queuedCount * avgPerRow);
+      etaText = queuedCount === 0 ? "Almost done" : etaSecs < 60 ? `~${etaSecs}s` : `~${Math.ceil(etaSecs / 60)} min`;
+    } else {
+      const etaSecs = queuedCount * SECONDS_PER_MINT;
+      etaText = queuedCount === 0 ? "Almost done" : etaSecs < 60 ? `~${etaSecs}s` : `~${Math.ceil(etaSecs / 60)} min`;
+    }
 
     return (
       <div>
         <div className="flex items-baseline gap-4 mb-6">
           <span className="text-[11px] uppercase tracking-[0.25em] text-[#0033AD]">
-            ● Anchoring batch
+            {isAborting ? "⊙ Aborting after current row..." : "● Anchoring batch"}
           </span>
           <span className="h-px flex-1 bg-black/20" />
         </div>
@@ -429,6 +473,9 @@ export default function BulkIssueView({
           style={{ fontFamily: "'Instrument Serif', serif" }}
         >
           {doneCount} / {total} on-chain
+          {errorInProgress > 0 && (
+            <span className="text-[#C53030]"> · {errorInProgress} failed</span>
+          )}
         </h1>
 
         {/* Progress bar */}
@@ -441,7 +488,7 @@ export default function BulkIssueView({
           </div>
           <div className="flex justify-between mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-black/60">
             <span>{progress}%</span>
-            <span>~{Math.max(0, total - doneCount)} remaining</span>
+            <span>{etaText}</span>
           </div>
         </div>
 
@@ -452,10 +499,10 @@ export default function BulkIssueView({
             const symbol =
               status === "done"
                 ? "✓"
-                : status === "anchoring"
-                  ? "◉"
-                  : status === "hashing"
-                    ? "⟳"
+                : status === "error"
+                  ? "✕"
+                  : status === "submitting"
+                    ? "◉"
                     : "⏸";
             const opacity = status === "queued" ? 0.4 : 1;
             return (
@@ -474,11 +521,28 @@ export default function BulkIssueView({
                 <span className="text-[#0AFF7F]/60 text-[10px]">
                   {status === "done"
                     ? p.txHash?.slice(0, 12) + "..."
-                    : status.toUpperCase()}
+                    : status === "error"
+                      ? p.errorMessage?.slice(0, 24) + "…"
+                      : status.toUpperCase()}
                 </span>
               </div>
             );
           })}
+        </div>
+
+        {/* Abort button */}
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => {
+              abortRef.current = true;
+              setIsAborting(true);
+            }}
+            disabled={isAborting}
+            className="border border-black/30 px-5 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-black/50 hover:border-[#C53030] hover:text-[#C53030] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {isAborting ? "Waiting for current row to finish..." : "✕ Abort batch"}
+          </button>
         </div>
       </div>
     );
@@ -486,16 +550,19 @@ export default function BulkIssueView({
 
   // phase === "complete"
   const successCount = processed.filter((p) => p.status === "done").length;
+  const errorCount = processed.filter((p) => p.status === "error").length;
 
   return (
     <div>
       <div className="flex items-baseline gap-4 mb-6">
-        <span className="text-[11px] uppercase tracking-[0.25em] text-[#0033AD]">
-          ✓ Batch complete
+        <span
+          className={`text-[11px] uppercase tracking-[0.25em] ${errorCount > 0 ? "text-[#C53030]" : "text-[#0033AD]"}`}
+        >
+          {errorCount > 0 ? "⚠ Batch done with errors" : "✓ Batch complete"}
         </span>
         <span className="h-px flex-1 bg-black/20" />
         <span className="text-[10px] uppercase tracking-[0.2em] text-black/40">
-          All anchored
+          {errorCount === 0 ? "All anchored" : `${successCount} anchored · ${errorCount} failed`}
         </span>
       </div>
 
@@ -503,19 +570,52 @@ export default function BulkIssueView({
         className="text-4xl md:text-6xl leading-[0.95] mb-6 break-words"
         style={{ fontFamily: "'Instrument Serif', serif" }}
       >
-        {successCount} credentials.
+        {successCount} minted.
+        {errorCount > 0 && (
+          <span className="text-[#C53030]"> {errorCount} failed.</span>
+        )}
         <br />
-        <em className="italic text-[#0033AD]">All on-chain</em>.
+        <em className="italic text-[#0033AD]">
+          {errorCount === 0 ? "All on-chain" : "Check errors below"}
+        </em>.
       </h1>
 
-      <p className="text-sm md:text-base text-black/70 mb-10 max-w-2xl leading-relaxed">
-        Every recipient now has a verifiable credential anchored to Cardano
-        Preprod. They appear immediately in History — share the verifier
-        links with employers.
+      <p className="text-sm md:text-base text-black/70 mb-6 max-w-2xl leading-relaxed">
+        {errorCount === 0
+          ? "Every recipient now has a verifiable credential anchored to Cardano Preprod. Share the verifier links with employers."
+          : `${successCount} credentials anchored. ${errorCount} row(s) failed — see details below and retry.`}
       </p>
+
+      {errorCount > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="w-full mb-4 border-2 border-[#C53030] text-[#C53030] px-6 py-4 font-mono text-sm uppercase tracking-[0.2em] hover:bg-[#C53030] hover:text-white transition-colors"
+          >
+            ↻ Retry {errorCount} failed row{errorCount > 1 ? "s" : ""}
+          </button>
+          <details className="border-2 border-[#C53030]/40 bg-white mb-6">
+            <summary className="px-5 py-3 cursor-pointer font-mono text-[10px] uppercase tracking-[0.2em] text-[#C53030]/70 hover:text-[#C53030]">
+              ▸ {errorCount} failed row{errorCount > 1 ? "s" : ""} — details
+            </summary>
+            <div className="p-5 border-t border-[#C53030]/20 space-y-3 max-h-[240px] overflow-y-auto">
+              {processed
+                .filter((p) => p.status === "error")
+                .map((p, i) => (
+                  <div key={i} className="font-mono text-xs">
+                    <div className="text-black">{p.row.recipientName} · {p.row.credentialTitle}</div>
+                    <div className="text-[#C53030] text-[10px] mt-0.5">{p.errorMessage}</div>
+                  </div>
+                ))}
+            </div>
+          </details>
+        </>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-3 mb-6">
         <button
+          type="button"
           onClick={onComplete}
           className="bg-[#0033AD] text-white px-6 py-5 hover:bg-black transition-colors group"
         >
@@ -538,6 +638,7 @@ export default function BulkIssueView({
         </button>
 
         <button
+          type="button"
           onClick={reset}
           className="border-2 border-black px-6 py-5 hover:bg-black hover:text-[#FAFAF7] transition-colors"
         >

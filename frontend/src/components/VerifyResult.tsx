@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { VerificationResult } from "../lib/blockfrost";
 
 const M1_ANCHOR_TX =
@@ -74,6 +75,79 @@ export default function VerifyResult({
 
   // Detect V2 on-chain mint (has asset_name but not mock)
   const isV2OnChain = !isMock && !!assetName;
+
+  const downloadFilename = assetName ?? "credential-original";
+  const [downloadState, setDownloadState] = useState<"idle" | "loading" | "error">("idle");
+  const [receiptState, setReceiptState] = useState<"idle" | "loading" | "error">("idle");
+  const [receiptWarning, setReceiptWarning] = useState("");
+
+  async function handleDownloadReceipt() {
+    if (!result.metadata) return;
+    setReceiptState("loading");
+    setReceiptWarning("");
+    try {
+      const { generateReceipt } = await import("../lib/receipt-pdf");
+      const network = (import.meta.env.VITE_NETWORK ?? "preprod") as "preprod" | "mainnet";
+      const cardanoscanBase =
+        network === "preprod"
+          ? "https://preprod.cardanoscan.io/transaction/"
+          : "https://cardanoscan.io/transaction/";
+      const { pdfBytes, vietnameseSupport } = await generateReceipt({
+        txHash: result.txHash,
+        policyId: policyId,
+        assetName: assetName,
+        recipientName: recipientName,
+        certTitle: result.metadata.credential?.major,
+        certType: certType,
+        institution: result.metadata.issuer?.name ?? result.metadata.issuer?.id,
+        issueDate: result.metadata.credential?.graduation_date,
+        verifiedAt: new Date(),
+        network,
+        cardanoscanUrl: `${cardanoscanBase}${result.txHash}`,
+        certchainVerifyUrl: `${window.location.origin}/verify/${result.txHash}`,
+      });
+      if (!vietnameseSupport) {
+        setReceiptWarning("Font unavailable — Vietnamese characters may not display correctly.");
+      }
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `certchain-receipt-${result.txHash.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setReceiptState("idle");
+    } catch {
+      setReceiptState("error");
+    }
+  }
+
+  async function handleDownload() {
+    if (!imageUri) return;
+    setDownloadState("loading");
+    try {
+      const res = await fetch(imageUri);
+      if (!res.ok) throw new Error("fetch failed");
+      const blob = await res.blob();
+      let ext = "";
+      if (blob.type.includes("pdf")) ext = ".pdf";
+      else if (blob.type.includes("png")) ext = ".png";
+      else if (blob.type.includes("jpeg")) ext = ".jpg";
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = downloadFilename + ext;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objUrl);
+      setDownloadState("idle");
+    } catch {
+      setDownloadState("error");
+    }
+  }
 
   return (
     <div className="mt-12">
@@ -242,16 +316,31 @@ export default function VerifyResult({
                 {imageUri && (
                   <div className="md:col-span-2">
                     <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2">
-                      Image
+                      Original Document
                     </div>
-                    <a
-                      href={imageUri}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-xs underline underline-offset-4 hover:text-cardano-blue"
-                    >
-                      {imageUri}
-                    </a>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <a
+                        href={imageUri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-xs underline underline-offset-4 hover:text-cardano-blue truncate"
+                      >
+                        {imageUri}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={handleDownload}
+                        disabled={downloadState === "loading"}
+                        className="shrink-0 border border-ink font-mono text-xs uppercase tracking-[0.2em] px-4 py-2 hover:bg-ink hover:text-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {downloadState === "loading" ? "Downloading..." : "↓ Download original"}
+                      </button>
+                    </div>
+                    {downloadState === "error" && (
+                      <p className="font-mono text-[10px] text-red-600 mt-2">
+                        Download failed — open link manually ↑
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -290,26 +379,51 @@ export default function VerifyResult({
               </div>
             )}
 
-          {/* Cardanoscan link — adapts to mock vs real */}
-          {isMock ? (
-            <a
-              href={`https://preprod.cardanoscan.io/transaction/${anchorTx}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block p-4 font-mono text-xs uppercase tracking-widest text-center hover:bg-ink hover:text-bg transition-colors"
-            >
-              → view anchor proof (M1) on cardanoscan ↗
-            </a>
-          ) : (
-            <a
-              href={`https://preprod.cardanoscan.io/transaction/${result.txHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block p-4 font-mono text-xs uppercase tracking-widest text-center hover:bg-ink hover:text-bg transition-colors"
-            >
-              → view full transaction on cardanoscan ↗
-            </a>
-          )}
+          {/* Bottom actions: Receipt + Cardanoscan */}
+          <div className="border-t border-ink">
+            {/* Download Receipt — only for real on-chain credentials */}
+            {!isMock && (
+              <div className="border-b border-ink p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleDownloadReceipt}
+                    disabled={receiptState === "loading"}
+                    className="shrink-0 border border-ink font-mono text-xs uppercase tracking-[0.2em] px-4 py-2 hover:bg-ink hover:text-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {receiptState === "loading" ? "Generating..." : "↓ Download Receipt PDF"}
+                  </button>
+                  <span className="font-mono text-[10px] text-ink-muted">
+                    {receiptState === "error"
+                      ? "Generation failed — try again."
+                      : receiptWarning
+                        ? receiptWarning
+                        : "Verification record for HR, compliance, or audit."}
+                  </span>
+                </div>
+              </div>
+            )}
+            {/* Cardanoscan link */}
+            {isMock ? (
+              <a
+                href={`https://preprod.cardanoscan.io/transaction/${anchorTx}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block p-4 font-mono text-xs uppercase tracking-widest text-center hover:bg-ink hover:text-bg transition-colors"
+              >
+                → view anchor proof (M1) on cardanoscan ↗
+              </a>
+            ) : (
+              <a
+                href={`https://preprod.cardanoscan.io/transaction/${result.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block p-4 font-mono text-xs uppercase tracking-widest text-center hover:bg-ink hover:text-bg transition-colors"
+              >
+                → view full transaction on cardanoscan ↗
+              </a>
+            )}
+          </div>
         </div>
       )}
     </div>
