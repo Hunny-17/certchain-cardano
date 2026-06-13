@@ -70,47 +70,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
+    let cancelled = false;
+    const done = (s: Partial<AuthState>) => {
+      if (!cancelled) setState((prev) => ({ ...prev, loading: false, ...s }));
+    };
+
+    // Fallback: force loading=false after 6s in case everything hangs
+    const timeout = setTimeout(() => done({}), 6000);
+
     supabase.auth.getSession().then(async ({ data }) => {
+      clearTimeout(timeout);
       if (data.session) {
-        const membership = await loadMembership(data.session.user.id);
-        setState({
-          loading: false,
+        const membership = await loadMembership(data.session.user.id).catch(() => null);
+        done({
           user: data.session.user,
           session: data.session,
           university: membership?.university ?? null,
           role: membership?.role ?? null,
         });
       } else {
-        setState((s) => ({ ...s, loading: false }));
+        done({});
       }
     }).catch(() => {
-      setState((s) => ({ ...s, loading: false }));
+      clearTimeout(timeout);
+      done({});
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
-        const membership = await loadMembership(session.user.id);
-        setState({
-          loading: false,
+        const membership = await loadMembership(session.user.id).catch(() => null);
+        done({
           user: session.user,
           session,
           university: membership?.university ?? null,
           role: membership?.role ?? null,
         });
       } else {
-        setState({
-          loading: false,
-          user: null,
-          session: null,
-          university: null,
-          role: null,
-        });
+        done({ user: null, session: null, university: null, role: null });
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
