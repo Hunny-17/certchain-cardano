@@ -22,8 +22,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { MeshTxBuilder, resolvePaymentKeyHash } from "@meshsdk/core";
-import { mConStr1 } from "@meshsdk/core";
+import { MeshTxBuilder, resolvePaymentKeyHash, mConStr1 } from "@meshsdk/core";
 import { z } from "zod";
 import { getCustodyWallet, getCustodyAddress, getProvider } from "../_lib/custody-wallet.js";
 import { getServiceClient } from "../_lib/supabase-admin.js";
@@ -85,17 +84,21 @@ function parseCertDatumCbor(cborHex: string): CertFields | null {
     // CBOR tag 121 (Plutus Constructor 0) = 0xd8 0x79
     if (read() !== 0xd8 || read() !== 0x79) return null;
 
-    // Array header — may be definite (0x88) or indefinite (0x9f)
+    // Array header — major type 4, definite (0x88) or indefinite (0x9f)
     const arrayHead = read();
     if ((arrayHead >> 5) !== 4) return null;
     const ai = arrayHead & 0x1f;
     const indefinite = ai === 31;
-    if (!indefinite && ai === 24) read(); // skip 1-byte length for definite
+    let count = 0;
+    if (!indefinite) {
+      if (ai <= 23) { count = ai; }
+      else if (ai === 24) { count = read(); }
+      else return null;
+    }
 
     const rawFields: Buffer[] = [];
     let idx = 0;
-    while (indefinite ? buf[pos] !== 0xff : idx < (indefinite ? 0 : ai <= 23 ? ai : 8)) {
-      if (indefinite && buf[pos] === 0xff) break;
+    while (indefinite ? buf[pos] !== 0xff : idx < count) {
       const typeHead = read();
       const mt = typeHead >> 5;
       if (mt !== 2) return null; // expect major type 2 (bytes)
@@ -108,7 +111,6 @@ function parseCertDatumCbor(cborHex: string): CertFields | null {
       rawFields.push(buf.slice(pos, pos + len));
       pos += len;
       idx++;
-      if (!indefinite && idx >= 8) break;
     }
 
     if (rawFields.length < 8) return null;
