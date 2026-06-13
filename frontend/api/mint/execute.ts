@@ -56,7 +56,7 @@ function getV3Config() {
 // Constants from certchain-validator/plutus.json (certchain.certchain.mint)
 // Hardcoded to avoid filesystem access in Vercel serverless environment
 const _scriptHash = "5ebb2e22cc21daddb23b63b4c817325c0e39f88283adef2f4643402d";
-const _scriptSize = "929"; // bytes of applyCborEncoding(compiledCode)
+const _scriptSize = "925"; // bytes of on-chain script CBOR (verified via Blockfrost /scripts/{hash}/cbor)
 
 // ─── Input schema ─────────────────────────────────────────────────
 
@@ -198,6 +198,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
 
     const txBuilder = new MeshTxBuilder({ fetcher: provider, submitter: provider });
+
+    // Plutus scripts require a collateral UTxO (pure-ADA, no native assets)
+    const collateral = utxos.find(
+      (u) =>
+        u.output.amount.length === 1 &&
+        u.output.amount[0].unit === "lovelace" &&
+        Number(u.output.amount[0].quantity) >= 5_000_000
+    );
+    if (!collateral) {
+      throw new Error("No suitable collateral UTxO (≥5 ADA, pure-ADA) found in custody wallet");
+    }
+    txBuilder.txInCollateral(
+      collateral.input.txHash,
+      collateral.input.outputIndex,
+      collateral.output.amount,
+      collateral.output.address
+    );
 
     // Mint label-100 (reference NFT)
     txBuilder
