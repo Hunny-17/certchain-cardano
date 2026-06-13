@@ -92,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
 
     const pinata = getPinataClient();
-    const result = await pinata.upload.file(fileObj);
+    const result = await pinata.upload.public.file(fileObj);
 
     res.status(200).json({
       ipfs_hash: result.cid,
