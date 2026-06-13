@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import {
   saveMockCredential,
   listMockCredentials,
+  markCredentialRevoked,
   type StoredMockCredential,
 } from "../lib/credentialStore";
 import { useUserRole } from "../lib/useUserRole";
@@ -12,7 +13,7 @@ import RoleBadge from "../components/RoleBadge";
 import { hashIdentity } from "../lib/hashUtils";
 import BulkIssueView from "../components/BulkIssueView";
 import IpfsUpload from "../components/IpfsUpload";
-import { mintCertificate } from "../lib/mintApi";
+import { mintCertificate, revokeCredential } from "../lib/mintApi";
 // ============================================================================
 // CertChain — Issuer Portal (Mock)
 // ----------------------------------------------------------------------------
@@ -840,6 +841,12 @@ function HistoryView({ setPhase }: { setPhase: (p: Phase) => void }) {
     setCredentials(unique);
   }, []);
 
+  const handleRevoked = (txHash: string) => {
+    setCredentials((prev) =>
+      prev.map((c) => (c.txHash === txHash ? { ...c, _revoked: true } : c))
+    );
+  };
+
   const filtered = credentials.filter((c) => {
     if (filter === "all") return true;
     const issuedAt = Number(c._issuedAt) || 0;
@@ -928,6 +935,7 @@ function HistoryView({ setPhase }: { setPhase: (p: Phase) => void }) {
               onToggle={() =>
                 setExpandedTx(expandedTx === cred.txHash ? null : cred.txHash)
               }
+              onRevoked={handleRevoked}
             />
           ))}
         </div>
@@ -952,12 +960,16 @@ function HistoryRow({
   credential,
   expanded,
   onToggle,
+  onRevoked,
 }: {
   credential: StoredMockCredential;
   expanded: boolean;
   onToggle: () => void;
+  onRevoked: (txHash: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [revokeStep, setRevokeStep] = useState<"idle" | "confirm" | "loading" | "done" | "error">("idle");
+  const [revokeError, setRevokeError] = useState<string | null>(null);
   const issuedDate = new Date(credential._issuedAt);
   const dateStr = issuedDate.toLocaleDateString("en-US", {
     month: "short",
@@ -981,6 +993,29 @@ function HistoryRow({
     }
   };
 
+  const handleRevoke = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (revokeStep === "confirm") {
+      if (!credential._assetId) return;
+      setRevokeStep("loading");
+      setRevokeError(null);
+      try {
+        await revokeCredential(credential._assetId);
+        markCredentialRevoked(credential.txHash);
+        setRevokeStep("done");
+        onRevoked(credential.txHash);
+      } catch (err: unknown) {
+        setRevokeError(err instanceof Error ? err.message : "Revoke failed");
+        setRevokeStep("error");
+      }
+    } else {
+      setRevokeStep("confirm");
+    }
+  };
+
+  const isRevoked = credential._revoked || revokeStep === "done";
+  const isV3 = Boolean(credential._assetId);
+
   return (
     <>
       <button
@@ -1002,9 +1037,15 @@ function HistoryRow({
           {dateStr}
         </div>
         <div className="col-span-1 hidden md:flex justify-end items-center">
-          <span className="text-[9px] uppercase tracking-[0.2em] text-[#0033AD] border border-[#0033AD] px-2 py-0.5">
-            ✓ Active
-          </span>
+          {isRevoked ? (
+            <span className="text-[9px] uppercase tracking-[0.2em] text-[#C53030] border border-[#C53030] px-2 py-0.5">
+              Revoked
+            </span>
+          ) : (
+            <span className="text-[9px] uppercase tracking-[0.2em] text-[#0033AD] border border-[#0033AD] px-2 py-0.5">
+              ✓ Active
+            </span>
+          )}
         </div>
       </button>
 
@@ -1049,6 +1090,49 @@ function HistoryRow({
                   {copied ? "Copied ✓" : "Copy link"}
                 </button>
               </div>
+
+              {isV3 && !isRevoked && (
+                <div className="mt-4 pt-4 border-t-2 border-black/20">
+                  {revokeStep === "error" && revokeError && (
+                    <p className="text-[10px] text-[#C53030] mb-2 font-mono">{revokeError}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRevoke}
+                    disabled={revokeStep === "loading"}
+                    className={`w-full text-[10px] uppercase tracking-[0.2em] border-2 px-3 py-2 transition-colors ${
+                      revokeStep === "confirm"
+                        ? "border-[#C53030] text-[#C53030] hover:bg-[#C53030] hover:text-white"
+                        : revokeStep === "loading"
+                        ? "border-black/30 text-black/30 cursor-not-allowed"
+                        : "border-black/40 text-black/50 hover:border-[#C53030] hover:text-[#C53030]"
+                    }`}
+                  >
+                    {revokeStep === "loading"
+                      ? "Revoking on-chain..."
+                      : revokeStep === "confirm"
+                      ? "Confirm revoke — this cannot be undone"
+                      : "Revoke credential"}
+                  </button>
+                  {revokeStep === "confirm" && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setRevokeStep("idle"); }}
+                      className="w-full mt-1 text-[10px] uppercase tracking-[0.2em] text-black/40 hover:text-black py-1"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {isV3 && isRevoked && (
+                <div className="mt-4 pt-4 border-t-2 border-black/20">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-[#C53030]">
+                    This credential has been revoked on-chain.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -44,6 +44,8 @@ export interface StoredMockCredential extends MockCredentialInput {
   _anchorTx: string // ref to M1
   _issuedAt: number // unix ms
   txHash: string
+  _assetId?: string  // V3: label-222 user NFT asset ID
+  _revoked?: boolean // true after on-chain revocation
 }
 
 // ----------------------------------------------------------------------------
@@ -151,6 +153,21 @@ export function listMockCredentials(): StoredMockCredential[] {
     }
   }
   return out
+}
+
+/**
+ * Mark a stored credential as revoked in localStorage.
+ */
+export function markCredentialRevoked(txHash: string): void {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + txHash)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    parsed._revoked = true
+    localStorage.setItem(STORAGE_PREFIX + txHash, JSON.stringify(parsed))
+  } catch (e) {
+    console.warn('[credentialStore] markRevoked failed:', e)
+  }
 }
 
 export function getAllStoredCredentials(): StoredMockCredential[] {

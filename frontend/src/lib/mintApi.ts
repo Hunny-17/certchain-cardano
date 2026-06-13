@@ -35,6 +35,49 @@ export interface MintError {
   details?: unknown;
 }
 
+export interface RevokeSuccess {
+  tx_hash: string;
+  asset_id: string;
+  cardanoscan_url: string;
+}
+
+/**
+ * Revokes a V3 credential by calling the backend serverless function.
+ * Updates the on-chain CIP-68 datum status to "revoked".
+ * @throws Error if API returns non-2xx
+ */
+export async function revokeCredential(assetId: string): Promise<RevokeSuccess> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 90_000);
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const res = await fetch("/api/mint/revoke", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ asset_id: assetId }),
+      signal: controller.signal,
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error((data as { error: string }).error || `Revoke failed (${res.status})`);
+    }
+    return data as RevokeSuccess;
+  } catch (e: unknown) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("Revoke timed out after 90s. Check Cardanoscan manually.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 /**
  * Mints a credential by calling the backend serverless function.
  * @throws MintError-shaped error if API returns non-2xx

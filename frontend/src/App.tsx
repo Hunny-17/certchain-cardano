@@ -9,7 +9,6 @@ import PendingVerification from './pages/PendingVerification'
 import Unauthorized from './pages/Unauthorized'
 import RoleGuard from './components/RoleGuard'
 import AuthGuard from './components/AuthGuard'
-import V3Demo from './pages/v3/V3Demo'
 import ErrorBoundary from './components/ErrorBoundary'
 
 function App() {
@@ -17,7 +16,6 @@ function App() {
     <Routes>
       {/* PUBLIC ROUTES — anyone, no role needed */}
       <Route path="/" element={<Landing />} />
-      <Route path="/v3-demo" element={<V3Demo />} />
       <Route path="/pitch" element={<Pitch />} />
       <Route path="/login" element={<Login />} />
       <Route path="/pending-verification" element={<PendingVerification />} />
