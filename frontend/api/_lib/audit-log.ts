@@ -5,6 +5,10 @@ export type AuditEventType =
   | "mint_success"
   | "mint_failure"
   | "mint_db_error"
+  | "revoke_success"
+  | "revoke_failure"
+  | "revoke_db_error"
+  | "revoke_unauthorized"
   | "validation_error"
   | "auth_error";
 
