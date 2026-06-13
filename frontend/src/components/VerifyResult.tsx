@@ -212,10 +212,25 @@ export default function VerifyResult({
         </div>
       )}
 
+      {/* Revoked warning — shown when V3 datum status is "revoked" */}
+      {success && isV3 && credStatus === "revoked" && (
+        <div
+          className="border border-b-0 border-ink px-6 py-4 flex flex-col gap-1"
+          style={{ background: "#C53030", color: "#FAFAF7" }}
+        >
+          <div className="font-mono text-xs uppercase tracking-[0.2em] font-bold">
+            ⚠ CREDENTIAL REVOKED
+          </div>
+          <p className="font-mono text-[11px] opacity-90">
+            This credential has been revoked by the issuing institution. It is no longer valid for verification purposes.
+          </p>
+        </div>
+      )}
+
       {/* Status card */}
       <div
         className={`border border-ink p-6 relative ${success ? "" : "bg-bg-secondary"}`}
-        style={success ? { background: "#0033AD", color: "#FAFAF7" } : {}}
+        style={success && credStatus !== "revoked" ? { background: "#0033AD", color: "#FAFAF7" } : success ? { background: "#7f1d1d", color: "#FAFAF7" } : {}}
       >
         {!success && (
           <div
@@ -224,10 +239,18 @@ export default function VerifyResult({
           />
         )}
         <div className="font-mono text-xs uppercase tracking-widest opacity-70 mb-3">
-          {success ? "✓ VERIFICATION PASSED" : "✕ VERIFICATION FAILED"}
+          {success && credStatus === "revoked"
+            ? "✕ CREDENTIAL REVOKED"
+            : success
+            ? "✓ VERIFICATION PASSED"
+            : "✕ VERIFICATION FAILED"}
         </div>
         <h3 className="font-serif text-3xl md:text-4xl leading-tight">
-          {success ? "Authentic credential." : "Cannot verify this hash."}
+          {success && credStatus === "revoked"
+            ? "Credential has been revoked."
+            : success
+            ? "Authentic credential."
+            : "Cannot verify this hash."}
         </h3>
         {success && recipientName && (
           <div className="mt-4 font-mono text-xs uppercase tracking-[0.2em] opacity-80">
