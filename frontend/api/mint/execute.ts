@@ -30,9 +30,6 @@ import {
 import { mConStr0 } from "@meshsdk/core";
 import { z } from "zod";
 import { createHash, randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 import { getCustodyWallet, getCustodyAddress, getProvider } from "../_lib/custody-wallet.js";
 import { getServiceClient } from "../_lib/supabase-admin.js";
 import { insertAuditLog } from "../_lib/audit-log.js";
@@ -56,19 +53,10 @@ function getV3Config() {
   return { policyId, scriptAddress, refTxHash, refTxIndex };
 }
 
-// Load compiled script once at cold start (for script size + hash)
-const __dir = dirname(fileURLToPath(import.meta.url));
-const _blueprint = JSON.parse(
-  readFileSync(join(__dir, "../../certchain-validator/plutus.json"), "utf-8")
-);
-const _mintValidator = _blueprint.validators.find(
-  (v: any) => v.title === "certchain.certchain.mint"
-);
-if (!_mintValidator) throw new Error("certchain.mint not found in plutus.json");
-
-const _compiledCode = applyCborEncoding(_mintValidator.compiledCode);
-const _scriptSize   = String(Math.floor(_compiledCode.length / 2));
-const _scriptHash   = _mintValidator.hash as string;
+// Constants from certchain-validator/plutus.json (certchain.certchain.mint)
+// Hardcoded to avoid filesystem access in Vercel serverless environment
+const _scriptHash = "5ebb2e22cc21daddb23b63b4c817325c0e39f88283adef2f4643402d";
+const _scriptSize = "929"; // bytes of applyCborEncoding(compiledCode)
 
 // ─── Input schema ─────────────────────────────────────────────────
 
