@@ -75,6 +75,10 @@ export default function VerifyResult({
 
   // Detect V2 on-chain mint (has asset_name but not mock)
   const isV2OnChain = !isMock && !!assetName;
+  // Detect V3 CIP-68 mint
+  const isV3 = meta?.version === 'v3';
+  const v3PolicyId = import.meta.env.VITE_POLICY_ID as string | undefined;
+  const credStatus = meta?.status;
 
   const downloadFilename = assetName ?? "credential-original";
   const [downloadState, setDownloadState] = useState<"idle" | "loading" | "error">("idle");
@@ -185,6 +189,25 @@ export default function VerifyResult({
           </div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
             Asset · {assetName}
+          </div>
+        </div>
+      )}
+
+      {/* V3 CIP-68 badge */}
+      {success && isV3 && (
+        <div
+          className="border border-b-0 border-ink px-6 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+          style={{ background: "#E3F2FD" }}
+        >
+          <div className="font-mono text-[10px] uppercase tracking-[0.2em] flex items-center gap-3">
+            <span
+              className="inline-block w-2 h-2"
+              style={{ background: "#0033AD" }}
+            />
+            <span>V3 ON-CHAIN NFT · CIP-68 inline datum</span>
+          </div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
+            Status · {credStatus ?? "active"}
           </div>
         </div>
       )}
@@ -347,8 +370,61 @@ export default function VerifyResult({
             </div>
           )}
 
+          {/* V3 — CIP-68 on-chain details */}
+          {isV3 && (
+            <div className="border-b border-ink p-6 bg-bg-secondary">
+              <div className="font-mono text-xs uppercase tracking-widest text-ink-muted mb-4">
+                [02] / On-Chain NFT (CIP-68)
+              </div>
+              <div className="grid md:grid-cols-2 gap-6">
+                {v3PolicyId && (
+                  <div>
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2">
+                      Policy ID
+                    </div>
+                    <code className="block font-mono text-xs break-all bg-ink text-bg p-2">
+                      {v3PolicyId}
+                    </code>
+                  </div>
+                )}
+                <Field label="Datum status" value={credStatus ?? "active"} />
+                {imageUri && (
+                  <div className="md:col-span-2">
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2">
+                      Original Document
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <a
+                        href={imageUri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-xs underline underline-offset-4 hover:text-cardano-blue truncate"
+                      >
+                        {imageUri}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={handleDownload}
+                        disabled={downloadState === "loading"}
+                        className="shrink-0 border border-ink font-mono text-xs uppercase tracking-[0.2em] px-4 py-2 hover:bg-ink hover:text-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {downloadState === "loading" ? "Downloading..." : "↓ Download original"}
+                      </button>
+                    </div>
+                    {downloadState === "error" && (
+                      <p className="font-mono text-[10px] text-red-600 mt-2">
+                        Download failed — open link manually ↑
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {!isMock &&
             !isV2OnChain &&
+            !isV3 &&
             (result.metadata.credential?.name_hash ||
               result.metadata.credential?.student_id_hash ||
               result.metadata.credential?.doc_hash) && (

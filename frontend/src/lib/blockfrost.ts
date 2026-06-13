@@ -1,6 +1,11 @@
 const BLOCKFROST_BASE = 'https://cardano-preprod.blockfrost.io/api/v0'
 const API_KEY = import.meta.env.VITE_BLOCKFROST_KEY as string
 
+// V3 CIP-68 config — read at module load so tree-shaking keeps them as constants
+const V3_POLICY_ID = (import.meta.env.VITE_POLICY_ID as string | undefined) ?? ''
+const V3_SCRIPT_ADDRESS = (import.meta.env.VITE_SCRIPT_ADDRESS as string | undefined) ?? ''
+const CIP68_LABEL_100 = '000643b0' // Reference NFT prefix
+
 export interface CertChainMetadata {
   msg?: string[]
   issuer?: {
@@ -25,6 +30,9 @@ export interface CertChainMetadata {
   claim_hash?: string
   policy_id?: string
   recipient_name?: string
+  // V3 CIP-68 fields
+  status?: string   // "active" | "revoked"
+  version?: 'v2' | 'v3'
 }
 
 export interface VerificationResult {
@@ -34,6 +42,132 @@ export interface VerificationResult {
   blockTime?: number
   blockHeight?: number
   error?: string
+}
+
+// ============================================================================
+// V3 CIP-68 inline datum parser
+// ----------------------------------------------------------------------------
+// The datum is mConStr0([name, image, issuer, issuerPkh, issueDate, certType,
+//                        recipientName, status]) where all fields are ByteArrays.
+// On-chain CBOR: tag-121 (0xd879) + definite array of bytes items.
+// ============================================================================
+
+/**
+ * Parse a Plutus ConStr0-of-ByteArrays datum from its CBOR hex string.
+ * Field 3 (issuerPkh) is raw 28-byte binary and is returned as empty string.
+ */
+function parsePlutusConStr0Bytes(cborHex: string): string[] | null {
+  try {
+    const hex = cborHex.replace(/^0x/, '')
+    const bytes = new Uint8Array(
+      (hex.match(/.{2}/g) ?? []).map((b) => parseInt(b, 16))
+    )
+    let pos = 0
+    const read = () => bytes[pos++]
+
+    // CBOR tag 121 = 0xd8 0x79 (Plutus Constructor 0)
+    if (read() !== 0xd8 || read() !== 0x79) return null
+
+    // Array header — major type 4, either definite or indefinite (Plutus uses 0x9f)
+    const arrayHead = read()
+    if ((arrayHead >> 5) !== 4) return null
+    const ai = arrayHead & 0x1f
+    const indefinite = ai === 31 // 0x9f = indefinite-length array
+    let count = 0
+    if (!indefinite) {
+      if (ai <= 23) {
+        count = ai
+      } else if (ai === 24) {
+        count = read()
+      } else {
+        return null
+      }
+    }
+
+    const fields: string[] = []
+    let idx = 0
+    while (indefinite ? bytes[pos] !== 0xff : idx < count) {
+      if (indefinite && bytes[pos] === 0xff) break
+      const typeHead = read()
+      const mt = typeHead >> 5
+      if (mt !== 2) return null // expect major type 2 (bytes)
+      const lenAi = typeHead & 0x1f
+      let len: number
+      if (lenAi <= 23) {
+        len = lenAi
+      } else if (lenAi === 24) {
+        len = read()
+      } else if (lenAi === 25) {
+        len = (read() << 8) | read()
+      } else {
+        return null
+      }
+      const fieldBytes = bytes.slice(pos, pos + len)
+      pos += len
+      // issuerPkh (field 3) is raw binary — skip decoding
+      fields.push(idx === 3 ? '' : new TextDecoder().decode(fieldBytes))
+      idx++
+    }
+
+    return fields.length >= 8 ? fields : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Detect and parse a V3 CIP-68 credential from a transaction's UTxO outputs.
+ * Looks for a label-100 reference NFT at the V3 script address with inline datum.
+ * Returns null if the tx is not a V3 CertChain mint.
+ */
+async function tryReadV3Datum(txHash: string): Promise<{
+  metadata: CertChainMetadata
+  isCertChain: true
+} | null> {
+  if (!V3_POLICY_ID || !V3_SCRIPT_ADDRESS) return null
+
+  const res = await fetch(`${BLOCKFROST_BASE}/txs/${txHash}/utxos`, {
+    headers: { project_id: API_KEY },
+  })
+  if (!res.ok) return null
+
+  const data = await res.json()
+  const outputs: Array<{
+    address: string
+    amount: Array<{ unit: string; quantity: string }>
+    inline_datum: string | null
+  }> = Array.isArray(data.outputs) ? data.outputs : []
+
+  // Find the output at the script address holding the label-100 reference NFT
+  const scriptOutput = outputs.find(
+    (o) =>
+      o.address === V3_SCRIPT_ADDRESS &&
+      o.amount.some((a) => a.unit.startsWith(V3_POLICY_ID + CIP68_LABEL_100))
+  )
+  if (!scriptOutput?.inline_datum) return null
+
+  // fields: [name, image, issuer, issuerPkh(skip), issueDate, certType, recipientName, status]
+  const fields = parsePlutusConStr0Bytes(scriptOutput.inline_datum)
+  if (!fields) return null
+
+  const [name, image, issuer, , issueDate, certType, recipientName, status] = fields
+
+  return {
+    isCertChain: true,
+    metadata: {
+      version: 'v3',
+      image: image || undefined,
+      cert_type: certType || undefined,
+      recipient_name: recipientName || undefined,
+      status: status || undefined,
+      credential: {
+        major: name || undefined,
+        type: certType || undefined,
+        graduation_date: issueDate || undefined,
+      },
+      issuer: issuer ? { name: issuer } : undefined,
+    },
+  }
 }
 
 // ============================================================================
@@ -158,11 +292,26 @@ export async function verifyTxHash(txHash: string): Promise<VerificationResult> 
     }
     const txInfo = await txRes.json()
 
-    const metaRes = await fetch(`${BLOCKFROST_BASE}/txs/${cleanHash}/metadata`, {
-      headers: { project_id: API_KEY },
-    })
-    const metaArray = await metaRes.json()
+    // Fire V3 UTxO check and V2 metadata fetch in parallel
+    const [v3Result, metaArray] = await Promise.all([
+      tryReadV3Datum(cleanHash).catch(() => null),
+      fetch(`${BLOCKFROST_BASE}/txs/${cleanHash}/metadata`, {
+        headers: { project_id: API_KEY },
+      }).then((r) => r.json()).catch(() => []),
+    ])
 
+    // V3 path — inline datum found at script address
+    if (v3Result) {
+      return {
+        txHash: cleanHash,
+        isCertChain: true,
+        metadata: v3Result.metadata,
+        blockTime: txInfo.block_time,
+        blockHeight: txInfo.block_height,
+      }
+    }
+
+    // V2 path — CIP-25 / CIP-20 tx metadata
     if (!Array.isArray(metaArray) || metaArray.length === 0) {
       return {
         txHash: cleanHash,
@@ -177,25 +326,18 @@ export async function verifyTxHash(txHash: string): Promise<VerificationResult> 
     const label674 = metaArray.find((m: { label: string }) => m.label === '674')
     const label721 = metaArray.find((m: { label: string }) => m.label === '721')
 
-    // Strict CertChain detection: must have label 674 with "CertChain" in msg
-    // OR must be a CIP-25 NFT with a parseable asset (V2 mint)
     let isCertChain = false
-    let mergedMetadata: CertChainMetadata = {}
+    let mergedMetadata: CertChainMetadata = { version: 'v2' }
 
-    // Parse CIP-20 (label 674) if exists
     if (label674?.json_metadata) {
-      // Check if it's the OLD M1 format (with credential.major, issuer.name, etc.)
       const oldFormat = label674.json_metadata as CertChainMetadata
       if (oldFormat.credential || oldFormat.issuer) {
-        // OLD format — use as-is for backward compat with M1
-        mergedMetadata = { ...oldFormat }
+        mergedMetadata = { ...oldFormat, version: 'v2' }
         isCertChain = true
       } else {
-        // NEW V2 format (msg array)
         const parsed = parseCip20Msg(label674.json_metadata)
         if (parsed) {
           mergedMetadata = { ...mergedMetadata, ...parsed }
-          // Detect CertChain by checking msg content
           if (parsed.msg?.some((m) => m.toLowerCase().includes('certchain'))) {
             isCertChain = true
           }
@@ -203,11 +345,9 @@ export async function verifyTxHash(txHash: string): Promise<VerificationResult> 
       }
     }
 
-    // Parse CIP-25 (label 721) if exists — V2 NFT metadata
     if (label721?.json_metadata) {
       const parsed = parseCip25(label721.json_metadata)
       if (parsed) {
-        // Smart merge for issuer: prefer CIP-25 institution name over CIP-20 address
         const mergedIssuer = parsed.issuer?.name
           ? parsed.issuer
           : mergedMetadata.issuer
@@ -221,7 +361,7 @@ export async function verifyTxHash(txHash: string): Promise<VerificationResult> 
           },
           issuer: mergedIssuer,
         }
-        isCertChain = true // CIP-25 NFT means it's a CertChain credential
+        isCertChain = true
       }
     }
 
