@@ -24,6 +24,7 @@ V3 smart-contract operations remain Preprod-only. Mainnet validator deployment r
 |---|---|---|
 | V3 mint | Pass | https://preprod.cardanoscan.io/transaction/e4cae0e69ab553d58b42e0f77ec6435a9dd4d2e9fe7150784b9e5862b77d4ce5 |
 | V3 revoke | Pass | https://preprod.cardanoscan.io/transaction/a67728c9e8d79f7e84d39390c74453980931a695f3f9fb7226cf5e2de286348f |
+| V3 production revoke retry | Pass | https://preprod.cardanoscan.io/transaction/01fac413e0d146c76d6ff42c5c1826a57b9aa9140b28a386a39b479358670ff8 |
 | V2 fallback | Pass | `fca1ed625512835fab7770da1e9063d394bc75908284c031b591ee49f5250851` |
 
 ## Production Checks
@@ -41,3 +42,11 @@ Two runtime fixes were added after Preprod testing:
 
 - Collateral UTxOs are excluded from coin selection so mint/revoke transactions do not accidentally consume them.
 - Revoke outputs top up lovelace to avoid `BabbageOutputTooSmallUTxO` when writing the larger revoked datum.
+- Issuer History hydrates from Supabase so V3 credentials keep their `asset_id` even when browser `localStorage` is stale or missing fields.
+- Revoke fetches fresh custody UTxOs from Blockfrost at request time so warm serverless invocations do not reuse stale wallet inputs.
+
+Latest production smoke test:
+
+- Mint tx: `2b62e615756c13af7b8dca53d496cc00ed46051bb7929a2d569000cd9630350b`
+- Revoke tx: `01fac413e0d146c76d6ff42c5c1826a57b9aa9140b28a386a39b479358670ff8`
+- Verify result: V3 badge shown, datum status `revoked`, red `CREDENTIAL REVOKED` banner shown.
