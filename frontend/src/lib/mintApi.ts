@@ -41,6 +41,20 @@ export interface RevokeSuccess {
   cardanoscan_url: string;
 }
 
+export interface IssuerHistoryCredential {
+  tx_hash: string;
+  asset_id: string | null;
+  status: string | null;
+  recipient_name: string;
+  recipient_email: string | null;
+  cert_title: string;
+  cert_type: string | null;
+  institution: string | null;
+  issue_date: string | null;
+  notes: string | null;
+  created_at: string | null;
+}
+
 /**
  * Revokes a V3 credential by calling the backend serverless function.
  * Updates the on-chain CIP-68 datum status to "revoked".
@@ -117,4 +131,23 @@ export async function mintCertificate(req: MintRequest): Promise<MintSuccess> {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function listIssuerCredentialHistory(): Promise<IssuerHistoryCredential[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  if (!token) return [];
+
+  const res = await fetch("/api/mint/history?limit=100", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) return [];
+
+  const data = await res.json();
+  return Array.isArray(data.credentials) ? data.credentials : [];
 }

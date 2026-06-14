@@ -13,7 +13,7 @@ import RoleBadge from "../components/RoleBadge";
 import { hashIdentity } from "../lib/hashUtils";
 import BulkIssueView from "../components/BulkIssueView";
 import IpfsUpload from "../components/IpfsUpload";
-import { mintCertificate, revokeCredential } from "../lib/mintApi";
+import { listIssuerCredentialHistory, mintCertificate, revokeCredential } from "../lib/mintApi";
 // ============================================================================
 // CertChain — Issuer Portal (Mock)
 // ----------------------------------------------------------------------------
@@ -835,10 +835,51 @@ function HistoryView({ setPhase }: { setPhase: (p: Phase) => void }) {
   const [filter, setFilter] = useState<"all" | "today" | "week">("all");
 
   useEffect(() => {
-    const all = listMockCredentials();
-    all.sort((a, b) => b._issuedAt - a._issuedAt);
-    const unique = Array.from(new Map(all.map((c) => [c.txHash, c])).values());
-    setCredentials(unique);
+    let cancelled = false;
+
+    const loadHistory = async () => {
+      const local = listMockCredentials();
+      const byTx = new Map(local.map((c) => [c.txHash, c]));
+
+      try {
+        const remote = await listIssuerCredentialHistory();
+        for (const row of remote) {
+          if (!row.tx_hash) continue;
+          const existing = byTx.get(row.tx_hash);
+          byTx.set(row.tx_hash, {
+            recipientName: row.recipient_name || existing?.recipientName || "Unknown recipient",
+            recipientEmail: row.recipient_email || existing?.recipientEmail || "",
+            recipientStudentId: existing?.recipientStudentId || "",
+            recipientDob: existing?.recipientDob || "",
+            credentialTitle: row.cert_title || existing?.credentialTitle || "Credential",
+            institution: row.institution || existing?.institution || "",
+            issueDate: row.issue_date || existing?.issueDate || "",
+            credentialType: row.cert_type || existing?.credentialType || "Credential",
+            notes: row.notes || existing?.notes || "",
+            _hashes: existing?._hashes,
+            _mock: true,
+            _anchorTx: existing?._anchorTx || row.tx_hash,
+            _issuedAt: row.created_at
+              ? new Date(row.created_at).getTime()
+              : existing?._issuedAt || Date.now(),
+            txHash: row.tx_hash,
+            _assetId: row.asset_id || existing?._assetId,
+            _revoked: row.status === "revoked" || existing?._revoked,
+          });
+        }
+      } catch (err) {
+        console.warn("[IssuerPortal] failed to load remote history", err);
+      }
+
+      const merged = Array.from(byTx.values());
+      merged.sort((a, b) => b._issuedAt - a._issuedAt);
+      if (!cancelled) setCredentials(merged);
+    };
+
+    loadHistory();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleRevoked = (txHash: string) => {
