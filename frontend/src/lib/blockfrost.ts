@@ -116,8 +116,9 @@ function parsePlutusConStr0Bytes(cborHex: string): string[] | null {
 }
 
 /**
- * Detect and parse a V3 CIP-68 credential from a transaction's UTxO outputs.
- * Looks for a label-100 reference NFT at the V3 script address with inline datum.
+ * Detect and parse a V3 CIP-68 credential.
+ * The mint tx identifies the label-100 Reference NFT, then we fetch the current
+ * UTxO for that asset so revoked credentials don't show stale mint-time datum.
  * Returns null if the tx is not a V3 CertChain mint.
  */
 async function tryReadV3Datum(txHash: string): Promise<{
@@ -138,16 +139,30 @@ async function tryReadV3Datum(txHash: string): Promise<{
     inline_datum: string | null
   }> = Array.isArray(data.outputs) ? data.outputs : []
 
-  // Find the output at the script address holding the label-100 reference NFT
+  // Find the mint output at the script address holding the label-100 reference NFT.
+  // Do not parse this datum for status: it is historical once the NFT is updated.
   const scriptOutput = outputs.find(
     (o) =>
       o.address === V3_SCRIPT_ADDRESS &&
       o.amount.some((a) => a.unit.startsWith(V3_POLICY_ID + CIP68_LABEL_100))
   )
-  if (!scriptOutput?.inline_datum) return null
+  const refAssetId = scriptOutput?.amount.find((a) =>
+    a.unit.startsWith(V3_POLICY_ID + CIP68_LABEL_100)
+  )?.unit
+  if (!refAssetId) return null
+
+  const currentRes = await fetch(
+    `${BLOCKFROST_BASE}/addresses/${V3_SCRIPT_ADDRESS}/utxos/${refAssetId}`,
+    { headers: { project_id: API_KEY } }
+  )
+  if (!currentRes.ok) return null
+
+  const currentUtxos: Array<{ inline_datum: string | null }> = await currentRes.json()
+  const currentRefUtxo = Array.isArray(currentUtxos) ? currentUtxos[0] : null
+  if (!currentRefUtxo?.inline_datum) return null
 
   // fields: [name, image, issuer, issuerPkh(skip), issueDate, certType, recipientName, status]
-  const fields = parsePlutusConStr0Bytes(scriptOutput.inline_datum)
+  const fields = parsePlutusConStr0Bytes(currentRefUtxo.inline_datum)
   if (!fields) return null
 
   const [name, image, issuer, , issueDate, certType, recipientName, status] = fields
