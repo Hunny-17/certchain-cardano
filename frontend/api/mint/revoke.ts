@@ -23,6 +23,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { MeshTxBuilder, resolvePaymentKeyHash, mConStr1 } from "@meshsdk/core";
+import type { UTxO } from "@meshsdk/core";
 import { z } from "zod";
 import { getCustodyWallet, getCustodyAddress, getProvider } from "../_lib/custody-wallet.js";
 import { getServiceClient } from "../_lib/supabase-admin.js";
@@ -267,10 +268,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const provider    = getProvider();
     const custodyPkh  = resolvePaymentKeyHash(custodyAddr);
 
-    const allUtxos = await wallet.getUtxos();
-    const walletUtxos = allUtxos.filter(
+    // Always query fresh UTxOs from Blockfrost. MeshWallet is cached between
+    // warm serverless invocations and can otherwise hand the builder stale
+    // inputs after several mint/revoke transactions.
+    const allUtxos = await provider.fetchAddressUTxOs(custodyAddr);
+    const userAssetUtxos = await provider.fetchAddressUTxOs(custodyAddr, body.asset_id);
+    const byInput = new Map<string, UTxO>();
+    for (const utxo of [...allUtxos, ...userAssetUtxos]) {
+      byInput.set(`${utxo.input.txHash}#${utxo.input.outputIndex}`, utxo);
+    }
+    const walletUtxos = Array.from(byInput.values()).filter(
       (u) => !(u.input.txHash === refTxHash && u.input.outputIndex === refTxIndex)
     );
+
+    const userAssetUtxo = walletUtxos.find((u) =>
+      u.output.amount.some((a) => a.unit === body.asset_id && Number(a.quantity) > 0)
+    );
+    if (!userAssetUtxo) {
+      res.status(409).json({
+        error: "User NFT is not currently held by the custody wallet, so this credential cannot be revoked from the issuer portal.",
+      });
+      return;
+    }
 
     const collateral = walletUtxos.find(
       (u) =>
