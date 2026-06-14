@@ -5,7 +5,6 @@ const NAV_LINKS = [
   { to: '/holder', label: 'Holder', shortLabel: 'Holder' },
   { to: '/verify', label: 'Verifier', shortLabel: 'Verify' },
   { to: '/pitch', label: 'Pitch', shortLabel: 'Pitch' },
-  { to: '/v3-demo', label: 'V3 Demo ✦', shortLabel: 'V3' },
 ]
 
 export default function Navbar() {
