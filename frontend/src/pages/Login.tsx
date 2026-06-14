@@ -64,29 +64,33 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block font-mono text-[10px] uppercase tracking-[0.2em] text-black/60 mb-2">
+            <label htmlFor="login-email" className="block font-mono text-[10px] uppercase tracking-[0.2em] text-black/60 mb-2">
               Institutional email
             </label>
             <input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
+              placeholder="you@university.edu"
               className="w-full border-2 border-black px-4 py-3 bg-white font-mono text-sm focus:outline-none focus:border-[#0033AD] transition-colors"
             />
           </div>
 
           <div>
-            <label className="block font-mono text-[10px] uppercase tracking-[0.2em] text-black/60 mb-2">
+            <label htmlFor="login-password" className="block font-mono text-[10px] uppercase tracking-[0.2em] text-black/60 mb-2">
               Password
             </label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
+              placeholder="••••••••"
               className="w-full border-2 border-black px-4 py-3 bg-white font-mono text-sm focus:outline-none focus:border-[#0033AD] transition-colors"
             />
           </div>

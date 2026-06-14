@@ -215,6 +215,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       collateral.output.amount,
       collateral.output.address
     );
+    const spendableUtxos = utxos.filter(
+      (u) =>
+        !(u.input.txHash === collateral.input.txHash &&
+          u.input.outputIndex === collateral.input.outputIndex)
+    );
 
     // Mint label-100 (reference NFT)
     txBuilder
@@ -243,7 +248,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const unsignedTx = await txBuilder
       .changeAddress(custodyAddr)
-      .selectUtxosFrom(utxos)
+      .selectUtxosFrom(spendableUtxos)
       .complete();
 
     // 7. Sign + submit

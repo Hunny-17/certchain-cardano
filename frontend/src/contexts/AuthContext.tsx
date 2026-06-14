@@ -98,18 +98,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session) {
-        const membership = await loadMembership(session.user.id).catch(() => null);
-        done({
-          user: session.user,
-          session,
-          university: membership?.university ?? null,
-          role: membership?.role ?? null,
-        });
-      } else {
-        done({ user: null, session: null, university: null, role: null });
-      }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Run async work in a microtask so this callback returns synchronously,
+      // preventing signInWithPassword from blocking on loadMembership.
+      Promise.resolve().then(async () => {
+        if (session) {
+          const membership = await Promise.race([
+            loadMembership(session.user.id),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+          ]).catch(() => null);
+          done({
+            user: session.user,
+            session,
+            university: membership?.university ?? null,
+            role: membership?.role ?? null,
+          });
+        } else {
+          done({ user: null, session: null, university: null, role: null });
+        }
+      });
     });
 
     return () => {

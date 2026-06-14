@@ -293,6 +293,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       recipientName: certFields.recipientName,
       status:        "revoked",
     });
+    const refOutputAmount = refUtxo.amount.map((a) =>
+      a.unit === "lovelace"
+        ? { ...a, quantity: String(Math.max(Number(a.quantity), 2_000_000)) }
+        : a
+    );
 
     const txBuilder = new MeshTxBuilder({ fetcher: provider, submitter: provider });
 
@@ -302,6 +307,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       collateral.input.outputIndex,
       collateral.output.amount,
       collateral.output.address
+    );
+    const spendableUtxos = walletUtxos.filter(
+      (u) =>
+        !(u.input.txHash === collateral.input.txHash &&
+          u.input.outputIndex === collateral.input.outputIndex)
     );
 
     // Spend the reference NFT UTxO from script address
@@ -314,7 +324,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Output ref NFT back to script address with revoked datum
     txBuilder
-      .txOut(scriptAddress, refUtxo.amount)
+      .txOut(scriptAddress, refOutputAmount)
       .txOutInlineDatumValue(revokedDatum, "Mesh");
 
     // Custody wallet must sign (satisfies issuer_pkh check in spend validator)
@@ -322,7 +332,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const unsignedTx = await txBuilder
       .changeAddress(custodyAddr)
-      .selectUtxosFrom(walletUtxos)
+      .selectUtxosFrom(spendableUtxos)
       .complete();
 
     // 7. Sign + submit
