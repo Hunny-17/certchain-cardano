@@ -1133,6 +1133,14 @@ function HistoryRow({
                   </p>
                 </div>
               )}
+
+              {!isV3 && (
+                <div className="mt-4 pt-4 border-t-2 border-black/20">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-black/45">
+                    Legacy/V2 credential - on-chain revoke is only available for V3 credentials.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
