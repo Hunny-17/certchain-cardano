@@ -330,6 +330,20 @@ npm run dev          # http://localhost:5173
 
 ## 🗺️ Roadmap
 
+### V3 CIP-68 Status
+
+V3 is merged to `main` and deployed to Vercel production as of 2026-06-14.
+
+- CIP-68 mint path: label-100 Reference NFT at the validator address plus label-222 User NFT
+- Revocation path: issuer spends the Reference NFT and writes `status = "revoked"` back into the inline datum
+- Verifier path: reads V3 inline datum and preserves V2/CIP-20/CIP-25 fallback compatibility
+- Production URL: https://certchain-cardano.vercel.app
+- Preprod V3 mint test: https://preprod.cardanoscan.io/transaction/e4cae0e69ab553d58b42e0f77ec6435a9dd4d2e9fe7150784b9e5862b77d4ce5
+- Preprod V3 revoke test: https://preprod.cardanoscan.io/transaction/a67728c9e8d79f7e84d39390c74453980931a695f3f9fb7226cf5e2de286348f
+- V2 compatibility smoke test: `fca1ed625512835fab7770da1e9063d394bc75908284c031b591ee49f5250851` still resolves through the legacy metadata path
+
+V3 smart-contract operations remain Preprod-only. Mainnet validator deployment requires an external audit.
+
 | Milestone | Date | Status | Deliverable |
 |-----------|------|--------|-------------|
 | **M1 — POC** | 04/05/2026 | ✅ Done | Real CIP-20 anchor on Cardano Preprod |

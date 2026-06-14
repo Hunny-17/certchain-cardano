@@ -39,6 +39,12 @@ coverage/
 .tmp/
 *.tmp
 
+# Local assistant/project handoff artifacts
+.claude/
+Paperwork/
+files/
+files.zip
+
 # Python (cho backend FastAPI sau này)
 __pycache__/
 *.py[cod]
