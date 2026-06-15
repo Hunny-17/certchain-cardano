@@ -191,7 +191,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // 6. Build CIP-68 mint tx
-    const allUtxos = await wallet.getUtxos();
+    // Query fresh UTxOs from Blockfrost. BrowserWallet/MeshWallet instances can
+    // be cached across warm serverless invocations and return inputs that were
+    // already spent by a previous mint/revoke transaction.
+    const allUtxos = await provider.fetchAddressUTxOs(custodyAddr);
     // Exclude the reference script UTxO so coin selection doesn't spend it
     const utxos = allUtxos.filter(
       (u) => !(u.input.txHash === refTxHash && u.input.outputIndex === refTxIndex)
