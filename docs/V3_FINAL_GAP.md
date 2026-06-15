@@ -22,6 +22,8 @@ in the original plan.
   revoke retry.
 - Hardened validator reference script deployed on Preprod and passed fresh
   production mint/revoke/verify smoke.
+- Preprod volume target met: audit log confirms 14 V3 mint successes and 5 V3
+  revoke successes.
 - Revoked verify page shows V3 badge, `DATUM STATUS revoked`, and red banner.
 - Release notes record the latest successful mint/revoke/verify smoke test.
 
@@ -37,7 +39,6 @@ in the original plan.
 
 - Phase A practice projects: vault validator and token swap escrow.
 - On-chain tests for `Update` and `Burn`.
-- Preprod volume target of 10+ V3 mints and 5+ revocations.
 - External audit and any Mainnet deployment.
 
 ## Release Interpretation

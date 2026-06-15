@@ -46,6 +46,8 @@ implemented directly.
 - [x] V2 fallback still resolves legacy metadata.
 - [x] Production Vercel health check returns HTTP 200.
 - [x] Production Vercel logs show no recent revoke errors after the fresh-UTxO fix.
+- [x] Preprod volume target met: audit log confirms 14 V3 mint successes and
+  5 V3 revoke successes.
 - [x] Hardened validator smoke:
   - Mint tx `56638b322f0165a0cbf12ac8b58968e607f0a9e4a48bd8b39c7e03793593bb88`
   - Revoke tx `691bb7551636bf993226c4c3cb78886145fc721d74005dba3aebc91ed7943fdb`
@@ -53,5 +55,3 @@ implemented directly.
 ## Deferred To Reach 100% Of Original Plan
 
 - Add explicit on-chain tests for `Update` and `Burn`.
-- Run enough Preprod volume to satisfy the plan's `10+ V3 mints + 5+ revokes`
-  success criterion.

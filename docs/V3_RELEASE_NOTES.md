@@ -29,6 +29,8 @@ V3 smart-contract operations remain Preprod-only. Mainnet validator deployment r
 | V3 production revoke retry | Pass | https://preprod.cardanoscan.io/transaction/01fac413e0d146c76d6ff42c5c1826a57b9aa9140b28a386a39b479358670ff8 |
 | V3 hardened validator mint | Pass | https://preprod.cardanoscan.io/transaction/56638b322f0165a0cbf12ac8b58968e607f0a9e4a48bd8b39c7e03793593bb88 |
 | V3 hardened validator revoke | Pass | https://preprod.cardanoscan.io/transaction/691bb7551636bf993226c4c3cb78886145fc721d74005dba3aebc91ed7943fdb |
+| V3 volume mint latest | Pass | https://preprod.cardanoscan.io/transaction/f5c990db66f7f624a659e238b960da4161d225a84a1bf3ed7dd85dc2db9e1271 |
+| V3 volume revoke latest | Pass | https://preprod.cardanoscan.io/transaction/821d6072e7612b2e0f311433b8d02bf5aeb415c8dd9f81c879715bd29f26afc5 |
 | V2 fallback | Pass | `fca1ed625512835fab7770da1e9063d394bc75908284c031b591ee49f5250851` |
 
 ## Production Checks
@@ -52,9 +54,17 @@ Two runtime fixes were added after Preprod testing:
 - V2 minting is available through `/api/mint/execute-v2`; V3 minting is
   explicitly available through `/api/mint/execute-v3` while `/api/mint/execute`
   remains the deployed compatibility route.
+- Volume testing met the release target: audit log confirms 14 V3 mint
+  successes and 5 V3 revoke successes.
+- Volume testing exposed warm-invocation and coin-selection issues. V3 mint now
+  fetches fresh UTxOs with a per-request Blockfrost provider, keeps collateral
+  pure ADA, and avoids relying on cached wallet UTxOs.
+- Rapid back-to-back mint batches can still hit chain/indexer timing if the
+  previous transaction's inputs are not fully settled; production UI usage and
+  smoke tests run at human cadence and passed after the fresh-provider fix.
 
 Latest production smoke test:
 
-- Mint tx: `56638b322f0165a0cbf12ac8b58968e607f0a9e4a48bd8b39c7e03793593bb88`
-- Revoke tx: `691bb7551636bf993226c4c3cb78886145fc721d74005dba3aebc91ed7943fdb`
+- Mint tx: `f5c990db66f7f624a659e238b960da4161d225a84a1bf3ed7dd85dc2db9e1271`
+- Revoke tx: `821d6072e7612b2e0f311433b8d02bf5aeb415c8dd9f81c879715bd29f26afc5`
 - Verify result: V3 badge shown, datum status `revoked`, red `CREDENTIAL REVOKED` banner shown.
