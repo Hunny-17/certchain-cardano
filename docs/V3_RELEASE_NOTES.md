@@ -25,6 +25,8 @@ V3 smart-contract operations remain Preprod-only. Mainnet validator deployment r
 | V3 mint | Pass | https://preprod.cardanoscan.io/transaction/e4cae0e69ab553d58b42e0f77ec6435a9dd4d2e9fe7150784b9e5862b77d4ce5 |
 | V3 revoke | Pass | https://preprod.cardanoscan.io/transaction/a67728c9e8d79f7e84d39390c74453980931a695f3f9fb7226cf5e2de286348f |
 | V3 production revoke retry | Pass | https://preprod.cardanoscan.io/transaction/01fac413e0d146c76d6ff42c5c1826a57b9aa9140b28a386a39b479358670ff8 |
+| V3 hardened validator mint | Pass | https://preprod.cardanoscan.io/transaction/56638b322f0165a0cbf12ac8b58968e607f0a9e4a48bd8b39c7e03793593bb88 |
+| V3 hardened validator revoke | Pass | https://preprod.cardanoscan.io/transaction/691bb7551636bf993226c4c3cb78886145fc721d74005dba3aebc91ed7943fdb |
 | V2 fallback | Pass | `fca1ed625512835fab7770da1e9063d394bc75908284c031b591ee49f5250851` |
 
 ## Production Checks
@@ -44,9 +46,10 @@ Two runtime fixes were added after Preprod testing:
 - Revoke outputs top up lovelace to avoid `BabbageOutputTooSmallUTxO` when writing the larger revoked datum.
 - Issuer History hydrates from Supabase so V3 credentials keep their `asset_id` even when browser `localStorage` is stale or missing fields.
 - Revoke fetches fresh custody UTxOs from Blockfrost at request time so warm serverless invocations do not reuse stale wallet inputs.
+- The hardened validator now enforces static-field preservation and requires `status = "revoked"` for `SpendAction::Revoke`; `aiken check` reports 25 tests passing.
 
 Latest production smoke test:
 
-- Mint tx: `2b62e615756c13af7b8dca53d496cc00ed46051bb7929a2d569000cd9630350b`
-- Revoke tx: `01fac413e0d146c76d6ff42c5c1826a57b9aa9140b28a386a39b479358670ff8`
+- Mint tx: `56638b322f0165a0cbf12ac8b58968e607f0a9e4a48bd8b39c7e03793593bb88`
+- Revoke tx: `691bb7551636bf993226c4c3cb78886145fc721d74005dba3aebc91ed7943fdb`
 - Verify result: V3 badge shown, datum status `revoked`, red `CREDENTIAL REVOKED` banner shown.

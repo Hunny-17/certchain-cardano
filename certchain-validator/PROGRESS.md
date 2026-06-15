@@ -28,7 +28,7 @@ implemented directly.
 - [x] TASK-C.3 Validator logic: mint pair, burn pair, issuer-signed spend, static-field preservation, and revoke status transition implemented.
 - [x] TASK-C.4 Unit tests: `aiken check` reports 25 tests passing.
 - [x] TASK-C.5 Compile + verify output: `aiken build` generates `plutus.json`; hardened script hash is `849a42464f285ca3e67e03d2fd974b497831a6ace8c11e1b85238f58`.
-- [~] TASK-C.6 Preprod deployment test: hardened reference script deployed; fresh mint/revoke/verify smoke against the hardened validator is next.
+- [x] TASK-C.6 Preprod deployment test: hardened reference script deployed and fresh mint/revoke/verify smoke passed.
 
 ## Phase D - Integration
 
@@ -46,6 +46,9 @@ implemented directly.
 - [x] V2 fallback still resolves legacy metadata.
 - [x] Production Vercel health check returns HTTP 200.
 - [x] Production Vercel logs show no recent revoke errors after the fresh-UTxO fix.
+- [x] Hardened validator smoke:
+  - Mint tx `56638b322f0165a0cbf12ac8b58968e607f0a9e4a48bd8b39c7e03793593bb88`
+  - Revoke tx `691bb7551636bf993226c4c3cb78886145fc721d74005dba3aebc91ed7943fdb`
 
 ## Deferred To Reach 100% Of Original Plan
 

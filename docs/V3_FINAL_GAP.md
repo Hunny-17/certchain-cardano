@@ -17,6 +17,8 @@ in the original plan.
 - Issuer can revoke V3 credentials from History.
 - Revoke endpoint uses fresh custody UTxOs and has passed a production Preprod
   revoke retry.
+- Hardened validator reference script deployed on Preprod and passed fresh
+  production mint/revoke/verify smoke.
 - Revoked verify page shows V3 badge, `DATUM STATUS revoked`, and red banner.
 - Release notes record the latest successful mint/revoke/verify smoke test.
 
