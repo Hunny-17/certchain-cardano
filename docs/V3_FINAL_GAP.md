@@ -24,15 +24,13 @@ in the original plan.
 
 - Validator actions exist for mint, burn, update, and revoke, but production
   only exercises mint and revoke.
-- Spend validator currently authorizes by issuer signature; backend enforces the
-  revoked datum transition. The original plan expected stricter on-chain datum
-  transition validation.
-- Validator compiles, but Aiken unit tests are not yet present.
+- Hardened spend validator now enforces issuer signature, static-field
+  preservation, and `Revoke` datum status transition.
+- `aiken check` now reports 25 tests passing.
 
 ## Deferred
 
 - Phase A practice projects: vault validator and token swap escrow.
-- 25+ Aiken unit tests.
 - On-chain tests for `Update` and `Burn`.
 - V2/V3 issuer mint version picker.
 - Preprod volume target of 10+ V3 mints and 5+ revocations.

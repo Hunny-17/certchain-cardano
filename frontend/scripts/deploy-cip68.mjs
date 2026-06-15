@@ -86,7 +86,7 @@ const utxos = await wallet.getUtxos();
 const txBuilder = new MeshTxBuilder({ fetcher: provider, submitter: provider });
 console.log('\nBuilding transaction...');
 const unsignedTx = await txBuilder
-  .txOut(walletAddress, [{ unit: 'lovelace', quantity: '6200000' }])
+  .txOut(walletAddress, [{ unit: 'lovelace', quantity: '9000000' }])
   .txOutReferenceScript(compiledCode, 'V3')
   .changeAddress(walletAddress)
   .selectUtxosFrom(utxos)

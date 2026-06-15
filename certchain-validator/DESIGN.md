@@ -55,10 +55,10 @@ Current validator actions:
 
 Current production backend uses `IssueCert` and `Revoke`.
 
-Important hardening gap: the current spend validator only checks issuer
-signature. The backend enforces the revoked datum transition, but the validator
-does not yet independently enforce static-field preservation or require
-`status = "revoked"` for `SpendAction::Revoke`.
+The spend validator checks issuer signature and the continuing output datum.
+`SpendAction::Revoke` requires static fields to be preserved and the new datum
+status to be `revoked`. `SpendAction::Update` requires static fields to be
+preserved.
 
 ## Migration
 
@@ -86,5 +86,6 @@ Current optimization choices:
 |---|---|
 | V3 mint smoke test | `e4cae0e69ab553d58b42e0f77ec6435a9dd4d2e9fe7150784b9e5862b77d4ce5` |
 | V3 revoke smoke test | `a67728c9e8d79f7e84d39390c74453980931a695f3f9fb7226cf5e2de286348f` |
+| Hardened reference script deploy | `55465fe31e313a7f9ec04f0cd5082fee272177baa0e65645d6f756ef79df95b9` |
 | Production revoke retry | `01fac413e0d146c76d6ff42c5c1826a57b9aa9140b28a386a39b479358670ff8` |
 | V2 fallback check | `fca1ed625512835fab7770da1e9063d394bc75908284c031b591ee49f5250851` |

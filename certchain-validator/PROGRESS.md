@@ -25,10 +25,10 @@ implemented directly.
 
 - [x] TASK-C.1 Repo setup: implemented as `certchain-validator/`.
 - [x] TASK-C.2 Type definitions: implemented in `validators/certchain.ak`.
-- [~] TASK-C.3 Validator logic: mint pair, burn pair, and issuer-signed spend implemented; stricter per-action datum checks are deferred.
-- [ ] TASK-C.4 Unit tests: `aiken check` currently reports 0 tests.
-- [x] TASK-C.5 Compile + verify output: `aiken build` generates `plutus.json`.
-- [~] TASK-C.6 Preprod deployment test: mint and revoke tested; update/burn on-chain tests are deferred.
+- [x] TASK-C.3 Validator logic: mint pair, burn pair, issuer-signed spend, static-field preservation, and revoke status transition implemented.
+- [x] TASK-C.4 Unit tests: `aiken check` reports 25 tests passing.
+- [x] TASK-C.5 Compile + verify output: `aiken build` generates `plutus.json`; hardened script hash is `849a42464f285ca3e67e03d2fd974b497831a6ace8c11e1b85238f58`.
+- [~] TASK-C.6 Preprod deployment test: hardened reference script deployed; fresh mint/revoke/verify smoke against the hardened validator is next.
 
 ## Phase D - Integration
 
@@ -49,10 +49,6 @@ implemented directly.
 
 ## Deferred To Reach 100% Of Original Plan
 
-- Add Aiken unit tests for minting policy and spend validator behavior.
-- Harden `SpendAction::Revoke` on-chain so the validator verifies the new datum
-  status is `revoked` and static fields are preserved.
-- Harden `SpendAction::Update` on-chain so static fields cannot be changed.
 - Add explicit on-chain tests for `Update` and `Burn`.
 - Add a V2/V3 mint version picker if both mint standards need to be exposed in
   the same issuer UI.

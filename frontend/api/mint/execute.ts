@@ -55,8 +55,8 @@ function getV3Config() {
 
 // Constants from certchain-validator/plutus.json (certchain.certchain.mint)
 // Hardcoded to avoid filesystem access in Vercel serverless environment
-const _scriptHash = "5ebb2e22cc21daddb23b63b4c817325c0e39f88283adef2f4643402d";
-const _scriptSize = "925"; // bytes of on-chain script CBOR (verified via Blockfrost /scripts/{hash}/cbor)
+const _scriptHash = "849a42464f285ca3e67e03d2fd974b497831a6ace8c11e1b85238f58";
+const _scriptSize = "1562"; // bytes of on-chain script CBOR (verified from certchain-validator/plutus.json)
 
 // ─── Input schema ─────────────────────────────────────────────────
 

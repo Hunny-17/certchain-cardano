@@ -3,7 +3,8 @@ use aiken/collection/list
 use aiken/crypto.{VerificationKeyHash}
 use aiken/primitive/bytearray
 use cardano/assets.{PolicyId, tokens}
-use cardano/transaction.{OutputReference, Transaction}
+use cardano/transaction.{InlineDatum, Output, OutputReference, Transaction}
+use cardano/transaction
 
 // CIP-68 label-100 prefix: Reference NFT (holds metadata in datum, locked at script)
 const label_100: ByteArray = #"000643b0"
@@ -35,6 +36,65 @@ pub type SpendAction {
   Update
   // Spend the reference NFT to set status = "revoked"
   Revoke
+}
+
+pub fn issuer_signed(self: Transaction, issuer_pkh: VerificationKeyHash) -> Bool {
+  list.has(self.extra_signatories, issuer_pkh)
+}
+
+pub fn static_fields_preserved(old: CertDatum, new: CertDatum) -> Bool {
+  and {
+    old.name == new.name,
+    old.issuer == new.issuer,
+    old.issuer_pkh == new.issuer_pkh,
+    old.issue_date == new.issue_date,
+    old.cert_type == new.cert_type,
+    old.recipient_name == new.recipient_name,
+  }
+}
+
+pub fn is_revoked(cert: CertDatum) -> Bool {
+  cert.status == "revoked"
+}
+
+fn output_datum(output: Output) -> Option<CertDatum> {
+  when output.datum is {
+    InlineDatum(data) -> {
+      expect cert: CertDatum = data
+      Some(cert)
+    }
+    _ -> None
+  }
+}
+
+fn continuing_datum(self: Transaction, own_ref: OutputReference) -> Option<CertDatum> {
+  let own_input = transaction.resolve_input(self.inputs, own_ref)
+
+  self.outputs
+    |> list.find_map(fn(output) {
+        if output.address == own_input.address {
+          output_datum(output)
+        } else {
+          None
+        }
+      })
+}
+
+pub fn validate_spend_action(
+  old: CertDatum,
+  action: SpendAction,
+  new: CertDatum,
+) -> Bool {
+  when action is {
+    Update ->
+      static_fields_preserved(old, new)
+
+    Revoke ->
+      and {
+        static_fields_preserved(old, new),
+        is_revoked(new),
+      }
+  }
 }
 
 validator certchain {
@@ -100,13 +160,22 @@ validator certchain {
   // may spend this UTxO, whether to update metadata or revoke the credential.
   spend(
     datum: Option<CertDatum>,
-    _action: SpendAction,
-    _utxo: OutputReference,
+    action: SpendAction,
+    utxo: OutputReference,
     self: Transaction,
   ) {
     when datum is {
       None -> False
-      Some(cert) -> list.has(self.extra_signatories, cert.issuer_pkh)
+      Some(cert) -> {
+        when continuing_datum(self, utxo) is {
+          None -> False
+          Some(new_cert) ->
+            and {
+              issuer_signed(self, cert.issuer_pkh),
+              validate_spend_action(cert, action, new_cert),
+            }
+        }
+      }
     }
   }
 }
