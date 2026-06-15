@@ -199,15 +199,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const utxos = allUtxos.filter(
       (u) => !(u.input.txHash === refTxHash && u.input.outputIndex === refTxIndex)
     );
+    const pureAdaUtxos = utxos.filter(
+      (u) =>
+        u.output.amount.length === 1 &&
+        u.output.amount[0].unit === "lovelace"
+    );
 
     const txBuilder = new MeshTxBuilder({ fetcher: provider, submitter: provider });
 
     // Plutus scripts require a collateral UTxO (pure-ADA, no native assets)
-    const collateral = utxos.find(
-      (u) =>
-        u.output.amount.length === 1 &&
-        u.output.amount[0].unit === "lovelace" &&
-        Number(u.output.amount[0].quantity) >= 5_000_000
+    const collateral = pureAdaUtxos.find(
+      (u) => Number(u.output.amount[0].quantity) >= 5_000_000
     );
     if (!collateral) {
       throw new Error("No suitable collateral UTxO (≥5 ADA, pure-ADA) found in custody wallet");
@@ -218,7 +220,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       collateral.output.amount,
       collateral.output.address
     );
-    const spendableUtxos = utxos.filter(
+    const spendableUtxos = pureAdaUtxos.filter(
       (u) =>
         !(u.input.txHash === collateral.input.txHash &&
           u.input.outputIndex === collateral.input.outputIndex)
