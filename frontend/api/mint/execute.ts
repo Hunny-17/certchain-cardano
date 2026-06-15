@@ -30,7 +30,7 @@ import {
 import { mConStr0 } from "@meshsdk/core";
 import { z } from "zod";
 import { createHash, randomBytes } from "node:crypto";
-import { getCustodyWallet, getCustodyAddress, getProvider } from "../_lib/custody-wallet.js";
+import { getCustodyWallet, getCustodyAddress } from "../_lib/custody-wallet.js";
 import { getServiceClient } from "../_lib/supabase-admin.js";
 import { insertAuditLog } from "../_lib/audit-log.js";
 import { requireUniversityMember, AuthError } from "../_lib/auth.js";
@@ -170,7 +170,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 3. Wallet + provider
     const wallet     = await getCustodyWallet();
     const custodyAddr = await getCustodyAddress();
-    const provider   = getProvider();
+    const blockfrostKey = process.env.BLOCKFROST_KEY;
+    if (!blockfrostKey) throw new Error("Missing BLOCKFROST_KEY env var");
+    const provider   = new BlockfrostProvider(blockfrostKey);
     const custodyPkh = resolvePaymentKeyHash(custodyAddr);
 
     // 4. CIP-68 asset names
@@ -220,7 +222,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       collateral.output.amount,
       collateral.output.address
     );
-    const spendableUtxos = pureAdaUtxos.filter(
+    const spendableUtxos = utxos.filter(
       (u) =>
         !(u.input.txHash === collateral.input.txHash &&
           u.input.outputIndex === collateral.input.outputIndex)
