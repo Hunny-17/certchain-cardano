@@ -17,6 +17,8 @@ V3 smart-contract operations remain Preprod-only. Mainnet validator deployment r
 - Issuer-controlled revocation writes `status = "revoked"` on-chain.
 - Verifier reads V3 inline datum and falls back to legacy V2 metadata.
 - Issuer Portal supports V3 revoke flow and Revoked/Active badge state.
+- Issuer Portal supports a V2/V3 mint version picker with V2 default, V3
+  revocable mode, per-version cost estimates, and version display in History.
 
 ## Verified On Preprod
 
@@ -47,6 +49,9 @@ Two runtime fixes were added after Preprod testing:
 - Issuer History hydrates from Supabase so V3 credentials keep their `asset_id` even when browser `localStorage` is stale or missing fields.
 - Revoke fetches fresh custody UTxOs from Blockfrost at request time so warm serverless invocations do not reuse stale wallet inputs.
 - The hardened validator now enforces static-field preservation and requires `status = "revoked"` for `SpendAction::Revoke`; `aiken check` reports 25 tests passing.
+- V2 minting is available through `/api/mint/execute-v2`; V3 minting is
+  explicitly available through `/api/mint/execute-v3` while `/api/mint/execute`
+  remains the deployed compatibility route.
 
 Latest production smoke test:
 

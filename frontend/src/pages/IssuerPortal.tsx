@@ -14,6 +14,7 @@ import { hashIdentity } from "../lib/hashUtils";
 import BulkIssueView from "../components/BulkIssueView";
 import IpfsUpload from "../components/IpfsUpload";
 import { listIssuerCredentialHistory, mintCertificate, revokeCredential } from "../lib/mintApi";
+import type { MintVersion } from "../lib/mintApi";
 // ============================================================================
 // CertChain — Issuer Portal (Mock)
 // ----------------------------------------------------------------------------
@@ -84,6 +85,16 @@ type FieldChangeEvent = ChangeEvent<
   HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
 >;
 
+const V3_POLICY_ID = import.meta.env.VITE_POLICY_ID as string | undefined;
+const CIP68_LABEL_222 = "000de140";
+
+function inferCredentialVersion(assetId?: string | null): MintVersion {
+  if (assetId && V3_POLICY_ID && assetId.startsWith(V3_POLICY_ID + CIP68_LABEL_222)) {
+    return "v3";
+  }
+  return "v2";
+}
+
 export default function IssuerPortal() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [activeStep, setActiveStep] = useState(0);
@@ -92,6 +103,7 @@ export default function IssuerPortal() {
   const [claimCode, setClaimCode] = useState<string>("");
   const [mintError, setMintError] = useState<string>("");
   const [ipfsHash, setIpfsHash] = useState<string>("");
+  const [mintVersion, setMintVersion] = useState<MintVersion>("v2");
   const userRole = useUserRole();
 
   const handleChange = (key: keyof FormState) => (e: FieldChangeEvent) =>
@@ -122,19 +134,22 @@ export default function IssuerPortal() {
       ]);
 
       // Call real mint API
-      const result = await mintCertificate({
-        recipient_email:
-          form.recipientEmail ||
-          `${form.recipientName.toLowerCase().replace(/\s+/g, ".")}@unknown.local`,
-        recipient_name: form.recipientName,
-        cert_title: form.credentialTitle,
-        institution: form.institution,
-        issue_date: form.issueDate,
-        cert_type: form.credentialType,
-        notes: form.notes || undefined,
-        ipfs_hash: ipfsHash || undefined,
-        _hp: hp,
-      });
+      const result = await mintCertificate(
+        {
+          recipient_email:
+            form.recipientEmail ||
+            `${form.recipientName.toLowerCase().replace(/\s+/g, ".")}@unknown.local`,
+          recipient_name: form.recipientName,
+          cert_title: form.credentialTitle,
+          institution: form.institution,
+          issue_date: form.issueDate,
+          cert_type: form.credentialType,
+          notes: form.notes || undefined,
+          ipfs_hash: ipfsHash || undefined,
+          _hp: hp,
+        },
+        mintVersion,
+      );
 
       clearInterval(stepTimer);
       setActiveStep(PUBLISH_STEPS.length); // mark all done
@@ -146,6 +161,7 @@ export default function IssuerPortal() {
         _real: true,
         _claimCodeShown: true,
         _assetId: result.asset_id,
+        _version: mintVersion,
       } as any);
 
       setCurrentTxHash(result.tx_hash);
@@ -216,6 +232,8 @@ export default function IssuerPortal() {
               mintError={mintError}
               ipfsHash={ipfsHash}
               onIpfsChange={setIpfsHash}
+              mintVersion={mintVersion}
+              onMintVersionChange={setMintVersion}
             />
           )}
           {phase === "publishing" && (
@@ -295,6 +313,8 @@ interface IdleViewProps {
   mintError?: string;
   ipfsHash: string;
   onIpfsChange: (hash: string) => void;
+  mintVersion: MintVersion;
+  onMintVersionChange: (version: MintVersion) => void;
 }
 
 function IdleView({
@@ -304,6 +324,8 @@ function IdleView({
   mintError,
   ipfsHash,
   onIpfsChange,
+  mintVersion,
+  onMintVersionChange,
 }: IdleViewProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
@@ -339,6 +361,11 @@ function IdleView({
           </div>
         )}
         <form onSubmit={handlePublish} className="space-y-8">
+          <VersionPicker
+            value={mintVersion}
+            onChange={onMintVersionChange}
+          />
+
           <Field
             label="Recipient · Full Name"
             required
@@ -449,8 +476,9 @@ function IdleView({
 
           <div className="pt-6 border-t-2 border-black flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <p className="text-[11px] uppercase tracking-[0.15em] text-black/50 max-w-xs leading-relaxed">
-              By publishing you consent to recording a metadata hash on the
-              Cardano blockchain. This action is irreversible.
+              {mintVersion === "v3"
+                ? "V3 locks an updatable reference NFT on-chain; issuer revocation remains available from History."
+                : "V2 records immutable CIP-25 metadata; on-chain revocation is not available."}
             </p>
             {mintError && <p className="text-red-500 text-sm">{mintError}</p>}
             {/* Honeypot — hidden from humans via CSS, bots auto-fill it */}
@@ -466,7 +494,7 @@ function IdleView({
               type="submit"
               className="group relative bg-black text-[#FAFAF7] px-10 py-5 text-sm uppercase tracking-[0.2em] hover:bg-[#0033AD] transition-colors duration-200 border-2 border-black"
             >
-              Publish to Cardano →
+              Publish {mintVersion.toUpperCase()} to Cardano →
             </button>
           </div>
         </form>
@@ -492,6 +520,83 @@ function IdleView({
 // ============================================================================
 // PUBLISHING — fake 3-step animation
 // ============================================================================
+function VersionPicker({
+  value,
+  onChange,
+}: {
+  value: MintVersion;
+  onChange: (version: MintVersion) => void;
+}) {
+  const options: Array<{
+    value: MintVersion;
+    title: string;
+    detail: string;
+    cost: string;
+  }> = [
+    {
+      value: "v2",
+      title: "V2 (CIP-25)",
+      detail: "Cheaper, immutable forever",
+      cost: "~0.18 ADA",
+    },
+    {
+      value: "v3",
+      title: "V3 (CIP-68)",
+      detail: "Revocable, updatable datum",
+      cost: "~0.5 ADA",
+    },
+  ];
+
+  return (
+    <fieldset>
+      <legend className="block text-[11px] uppercase tracking-[0.2em] text-black/60 mb-3">
+        Credential version
+      </legend>
+      <div className="grid md:grid-cols-2 border-2 border-black bg-white">
+        {options.map((option, index) => {
+          const selected = value === option.value;
+          return (
+            <label
+              key={option.value}
+              className={`cursor-pointer p-4 transition-colors ${
+                index === 0 ? "border-b-2 md:border-b-0 md:border-r-2 border-black" : ""
+              } ${selected ? "bg-black text-[#FAFAF7]" : "hover:bg-black/5"}`}
+            >
+              <input
+                type="radio"
+                name="mint-version"
+                value={option.value}
+                checked={selected}
+                onChange={() => onChange(option.value)}
+                className="sr-only"
+              />
+              <span className="flex items-center justify-between gap-3">
+                <span className="text-xs uppercase tracking-[0.2em]">
+                  {option.title}
+                </span>
+                <span
+                  className={`text-[10px] uppercase tracking-[0.15em] ${
+                    selected ? "text-white/70" : "text-black/50"
+                  }`}
+                >
+                  {option.cost}
+                </span>
+              </span>
+              <span
+                className={`mt-2 block text-[10px] uppercase tracking-[0.15em] ${
+                  selected ? "text-white/70" : "text-black/45"
+                }`}
+              >
+                {option.detail}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
 interface PublishingViewProps {
   form: FormState;
   activeStep: number;
@@ -864,6 +969,10 @@ function HistoryView({ setPhase }: { setPhase: (p: Phase) => void }) {
               : existing?._issuedAt || Date.now(),
             txHash: row.tx_hash,
             _assetId: row.asset_id || existing?._assetId,
+            _version:
+              row.version ||
+              existing?._version ||
+              inferCredentialVersion(row.asset_id || existing?._assetId),
             _revoked: row.status === "revoked" || existing?._revoked,
           });
         }
@@ -1055,7 +1164,10 @@ function HistoryRow({
   };
 
   const isRevoked = credential._revoked || revokeStep === "done";
-  const isV3 = Boolean(credential._assetId);
+  const isV3 =
+    credential._version === "v3" ||
+    inferCredentialVersion(credential._assetId) === "v3";
+  const versionLabel = isV3 ? "V3 / CIP-68" : "V2 / CIP-25";
 
   return (
     <>
@@ -1110,6 +1222,10 @@ function HistoryRow({
               <div className="text-sm">{credential.institution}</div>
             </div>
             <div>
+              <div className="text-[9px] uppercase tracking-[0.2em] text-black/50 mb-1">
+                Version
+              </div>
+              <div className="text-sm mb-3">{versionLabel}</div>
               <div className="text-[9px] uppercase tracking-[0.2em] text-black/50 mb-1">
                 Transaction Hash
               </div>

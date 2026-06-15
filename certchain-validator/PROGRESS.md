@@ -32,10 +32,10 @@ implemented directly.
 
 ## Phase D - Integration
 
-- [x] TASK-D.1 Backend V3 mint endpoint: implemented in production mint path.
+- [x] TASK-D.1 Backend V3 mint endpoint: implemented in production mint path and exposed as `/api/mint/execute-v3`.
 - [x] TASK-D.2 Frontend datum parsing: verifier reads current CIP-68 inline datum.
 - [x] TASK-D.3 Verifier UI update: V3 badge and revoked banner implemented.
-- [~] TASK-D.4 Issuer Portal mint version picker: deferred; current production path is V3-focused with V2 verification fallback.
+- [x] TASK-D.4 Issuer Portal mint version picker: V2/V3 picker implemented, default V2, cost estimates shown, history shows version per record.
 - [x] TASK-D.5 Issuer revoke UI: History revoke flow implemented for V3 credentials.
 
 ## Final Production Smoke Tests
@@ -53,7 +53,5 @@ implemented directly.
 ## Deferred To Reach 100% Of Original Plan
 
 - Add explicit on-chain tests for `Update` and `Burn`.
-- Add a V2/V3 mint version picker if both mint standards need to be exposed in
-  the same issuer UI.
 - Run enough Preprod volume to satisfy the plan's `10+ V3 mints + 5+ revokes`
   success criterion.

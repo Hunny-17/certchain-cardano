@@ -19,6 +19,8 @@ export interface MintRequest {
   _hp?: string; // honeypot — must be empty, bots fill it
 }
 
+export type MintVersion = "v2" | "v3";
+
 export interface MintSuccess {
   tx_hash: string;
   claim_code: string;
@@ -27,6 +29,7 @@ export interface MintSuccess {
   asset_name: string;
   custody_address: string;
   cardanoscan_url: string;
+  version?: MintVersion;
 }
 
 export interface MintError {
@@ -53,6 +56,7 @@ export interface IssuerHistoryCredential {
   issue_date: string | null;
   notes: string | null;
   created_at: string | null;
+  version?: MintVersion | null;
 }
 
 /**
@@ -96,7 +100,10 @@ export async function revokeCredential(assetId: string): Promise<RevokeSuccess> 
  * Mints a credential by calling the backend serverless function.
  * @throws MintError-shaped error if API returns non-2xx
  */
-export async function mintCertificate(req: MintRequest): Promise<MintSuccess> {
+export async function mintCertificate(
+  req: MintRequest,
+  version: MintVersion = "v3",
+): Promise<MintSuccess> {
   const controller = new AbortController();
   // 90s timeout — mint can take up to 60s for Cardano confirmation
   const timeout = setTimeout(() => controller.abort(), 90_000);
@@ -105,7 +112,8 @@ export async function mintCertificate(req: MintRequest): Promise<MintSuccess> {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
-    const res = await fetch(`/api/mint/execute`, {
+    const endpoint = version === "v2" ? "/api/mint/execute-v2" : "/api/mint/execute-v3";
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -122,7 +130,7 @@ export async function mintCertificate(req: MintRequest): Promise<MintSuccess> {
       throw new Error(err.message || err.error || `Mint failed (${res.status})`);
     }
 
-    return data as MintSuccess;
+    return { ...(data as MintSuccess), version };
   } catch (e: unknown) {
     if (e instanceof Error && e.name === "AbortError") {
       throw new Error("Mint timed out after 90s. Check Cardanoscan manually.");

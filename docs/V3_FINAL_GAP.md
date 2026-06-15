@@ -15,6 +15,9 @@ in the original plan.
 - V2 metadata verification remains backward compatible.
 - Issuer History hydrates V3 credentials from Supabase so `asset_id` is present.
 - Issuer can revoke V3 credentials from History.
+- Issuer Portal has a V2/V3 mint version picker with V2 default, cost estimates,
+  explicit `/api/mint/execute-v2` and `/api/mint/execute-v3` routing, and
+  version display in History.
 - Revoke endpoint uses fresh custody UTxOs and has passed a production Preprod
   revoke retry.
 - Hardened validator reference script deployed on Preprod and passed fresh
@@ -34,7 +37,6 @@ in the original plan.
 
 - Phase A practice projects: vault validator and token swap escrow.
 - On-chain tests for `Update` and `Burn`.
-- V2/V3 issuer mint version picker.
 - Preprod volume target of 10+ V3 mints and 5+ revocations.
 - External audit and any Mainnet deployment.
 

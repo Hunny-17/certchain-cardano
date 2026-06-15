@@ -37,6 +37,7 @@ export interface MockCredentialInput {
     student_id_hash: string
     dob_hash: string
   }
+  _version?: 'v2' | 'v3'
 }
 
 export interface StoredMockCredential extends MockCredentialInput {
@@ -44,7 +45,8 @@ export interface StoredMockCredential extends MockCredentialInput {
   _anchorTx: string // ref to M1
   _issuedAt: number // unix ms
   txHash: string
-  _assetId?: string  // V3: label-222 user NFT asset ID
+  _assetId?: string  // V2/V3 NFT asset ID; V3 uses label-222 user NFT
+  _version?: 'v2' | 'v3'
   _revoked?: boolean // true after on-chain revocation
 }
 

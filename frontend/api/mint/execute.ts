@@ -294,6 +294,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         warning: "Tx submitted on-chain but DB insert failed",
         tx_hash: txHash, claim_code: claimCode, asset_id: assetId,
         db_error: dbError.message,
+        version: "v3",
         cardanoscan_url: `https://preprod.cardanoscan.io/transaction/${txHash}`,
       });
       return;
@@ -314,6 +315,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       policy_id:       policyId,
       asset_name:      baseName,
       custody_address: custodyAddr,
+      version:         "v3",
       cardanoscan_url: `https://preprod.cardanoscan.io/transaction/${txHash}`,
     });
 
