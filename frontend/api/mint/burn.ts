@@ -35,6 +35,7 @@ const _scriptSize = "1634";
 
 const BurnSchema = z.object({
   asset_id: z.string().trim().min(1).max(300),
+  confirm: z.literal("BURN"),
 });
 
 type BurnRequest = z.infer<typeof BurnSchema>;
