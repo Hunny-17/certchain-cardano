@@ -24,13 +24,16 @@ in the original plan.
   production mint/revoke/verify smoke.
 - Preprod volume target met: audit log confirms 14 V3 mint successes and 5 V3
   revoke successes.
+- UpdateMetadata on-chain test passed: reference datum moved to update tx
+  `c1bf45062b0671027df7c91359e044f1307eca9d1c0db927fa5aa54159adaa0b` while
+  status remained `active`.
 - Revoked verify page shows V3 badge, `DATUM STATUS revoked`, and red banner.
 - Release notes record the latest successful mint/revoke/verify smoke test.
 
 ## Partial
 
-- Validator actions exist for mint, burn, update, and revoke, but production
-  only exercises mint and revoke.
+- Validator actions exist for mint, burn, update, and revoke; production has
+  exercised mint, update, and revoke.
 - Hardened spend validator now enforces issuer signature, static-field
   preservation, and `Revoke` datum status transition.
 - `aiken check` now reports 25 tests passing.
@@ -38,7 +41,7 @@ in the original plan.
 ## Deferred
 
 - Phase A practice projects: vault validator and token swap escrow.
-- On-chain tests for `Update` and `Burn`.
+- On-chain test for `Burn`.
 - External audit and any Mainnet deployment.
 
 ## Release Interpretation

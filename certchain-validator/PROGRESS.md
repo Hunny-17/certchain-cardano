@@ -48,10 +48,13 @@ implemented directly.
 - [x] Production Vercel logs show no recent revoke errors after the fresh-UTxO fix.
 - [x] Preprod volume target met: audit log confirms 14 V3 mint successes and
   5 V3 revoke successes.
+- [x] UpdateMetadata on-chain test passed:
+  - Mint tx `e159f2af4183c77eaea0fe8d0233caf5eaf7125b85c8a4b366ff1ef9934941cd`
+  - Update tx `c1bf45062b0671027df7c91359e044f1307eca9d1c0db927fa5aa54159adaa0b`
 - [x] Hardened validator smoke:
   - Mint tx `56638b322f0165a0cbf12ac8b58968e607f0a9e4a48bd8b39c7e03793593bb88`
   - Revoke tx `691bb7551636bf993226c4c3cb78886145fc721d74005dba3aebc91ed7943fdb`
 
 ## Deferred To Reach 100% Of Original Plan
 
-- Add explicit on-chain tests for `Update` and `Burn`.
+- Add explicit on-chain test for `Burn`.
