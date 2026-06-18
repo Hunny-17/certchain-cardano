@@ -1,0 +1,92 @@
+{
+  "preamble": {
+    "title": "hunny-17/vault-practice",
+    "description": "Practice Aiken vault validator for CertChain CIP-68 Phase A.4",
+    "version": "0.0.0",
+    "plutusVersion": "v3",
+    "compiler": {
+      "name": "Aiken",
+      "version": "v1.1.22+39d6b04"
+    },
+    "license": "Apache-2.0"
+  },
+  "validators": [
+    {
+      "title": "vault.vault.spend",
+      "datum": {
+        "title": "_datum",
+        "schema": {
+          "$ref": "#/definitions/vault~1VaultDatum"
+        }
+      },
+      "redeemer": {
+        "title": "redeemer",
+        "schema": {
+          "$ref": "#/definitions/vault~1VaultRedeemer"
+        }
+      },
+      "parameters": [
+        {
+          "title": "owner",
+          "schema": {
+            "$ref": "#/definitions/aiken~1crypto~1VerificationKeyHash"
+          }
+        }
+      ],
+      "compiledCode": "58ba010100229800aba2aba1aab9faab9eaab9dab9a9bae002488888896600264646644b30013370e900118039baa00189919912cc004cdc3a400060146ea80162b3001300b375400b132330010013758601c601e601e601e601e601e601e601e601e60186ea8c038020896600200314a115980099b8f375c601e00201514a31330020023010001402c80722c80622c8048c02c004c02cc030004c020dd5000c59006180400098041804800980400098021baa0088a4d13656400801",
+      "hash": "c1d353a42934170ac1a83666d4e454b0e29bfbe67635f117dbf8726c"
+    },
+    {
+      "title": "vault.vault.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "parameters": [
+        {
+          "title": "owner",
+          "schema": {
+            "$ref": "#/definitions/aiken~1crypto~1VerificationKeyHash"
+          }
+        }
+      ],
+      "compiledCode": "58ba010100229800aba2aba1aab9faab9eaab9dab9a9bae002488888896600264646644b30013370e900118039baa00189919912cc004cdc3a400060146ea80162b3001300b375400b132330010013758601c601e601e601e601e601e601e601e601e60186ea8c038020896600200314a115980099b8f375c601e00201514a31330020023010001402c80722c80622c8048c02c004c02cc030004c020dd5000c59006180400098041804800980400098021baa0088a4d13656400801",
+      "hash": "c1d353a42934170ac1a83666d4e454b0e29bfbe67635f117dbf8726c"
+    }
+  ],
+  "definitions": {
+    "ByteArray": {
+      "dataType": "bytes"
+    },
+    "aiken/crypto/VerificationKeyHash": {
+      "title": "VerificationKeyHash",
+      "dataType": "bytes"
+    },
+    "vault/VaultDatum": {
+      "title": "VaultDatum",
+      "anyOf": [
+        {
+          "title": "VaultDatum",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "note",
+              "$ref": "#/definitions/ByteArray"
+            }
+          ]
+        }
+      ]
+    },
+    "vault/VaultRedeemer": {
+      "title": "VaultRedeemer",
+      "anyOf": [
+        {
+          "title": "Withdraw",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": []
+        }
+      ]
+    }
+  }
+}

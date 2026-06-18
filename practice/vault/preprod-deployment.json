@@ -1,0 +1,10 @@
+{
+  "refTxHash": "331e1d04402ef394878704d788ef405410b5a7f872a64e7f02bbd593e1ee062d",
+  "refTxIndex": 0,
+  "ownerPkh": "2f2535f69c2ba0cfa9c02c81f3acb801f3543a3e6fdafb1c3e242c81",
+  "scriptAddress": "addr_test1wza2w3xkulwz7ze2vd2nn83j4mx49ylx0ezzdl004hn3lmgvh5nfv",
+  "scriptHash": "baa744d6e7dc2f0b2a6355399e32aecd5293e67e4426fdefade71fed",
+  "scriptSize": "224",
+  "deployedAt": "2026-06-18T17:04:58.602Z",
+  "network": "preprod"
+}
