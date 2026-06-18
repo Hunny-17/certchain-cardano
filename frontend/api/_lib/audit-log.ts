@@ -9,6 +9,9 @@ export type AuditEventType =
   | "revoke_failure"
   | "revoke_db_error"
   | "revoke_unauthorized"
+  | "update_success"
+  | "update_failure"
+  | "update_unauthorized"
   | "validation_error"
   | "auth_error";
 
