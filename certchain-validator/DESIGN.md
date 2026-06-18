@@ -50,15 +50,17 @@ Current validator actions:
 
 - `MintAction::IssueCert`: mints paired label-100 and label-222 tokens.
 - `MintAction::BurnCert`: burns matching token pairs.
+- `SpendAction::Burn`: issuer-signed Reference NFT spend without a continuing output.
 - `SpendAction::Update`: issuer-signed Reference NFT spend.
 - `SpendAction::Revoke`: issuer-signed Reference NFT spend.
 
-Current production backend uses `IssueCert` and `Revoke`.
+Current production backend uses `IssueCert`, `Update`, `Revoke`, and `Burn`.
 
 The spend validator checks issuer signature and the continuing output datum.
 `SpendAction::Revoke` requires static fields to be preserved and the new datum
 status to be `revoked`. `SpendAction::Update` requires static fields to be
-preserved.
+preserved. `SpendAction::Burn` requires only the issuer signature and is paired
+with `MintAction::BurnCert` to remove both CIP-68 tokens.
 
 ## Migration
 
@@ -89,3 +91,6 @@ Current optimization choices:
 | Hardened reference script deploy | `55465fe31e313a7f9ec04f0cd5082fee272177baa0e65645d6f756ef79df95b9` |
 | Production revoke retry | `01fac413e0d146c76d6ff42c5c1826a57b9aa9140b28a386a39b479358670ff8` |
 | V2 fallback check | `fca1ed625512835fab7770da1e9063d394bc75908284c031b591ee49f5250851` |
+| Burn-enabled reference script deploy | `5b31c9befbed9c79eec2dbb132705a08f64f317b0cc501a787a482590623c91f` |
+| Burn test mint | `1422bdf8f0aa16f86ea5aae3db95b2ac8033c38384908c81b212fbda560a96a1` |
+| Burn test | `21f15b723d5dc32afd80c334a8ec6a22aaa54e8f6e497dd1c879f9ed31468cef` |

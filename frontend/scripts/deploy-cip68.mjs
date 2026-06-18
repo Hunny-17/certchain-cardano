@@ -88,6 +88,7 @@ console.log('\nBuilding transaction...');
 const unsignedTx = await txBuilder
   .txOut(walletAddress, [{ unit: 'lovelace', quantity: '9000000' }])
   .txOutReferenceScript(compiledCode, 'V3')
+  .setFee('350000')
   .changeAddress(walletAddress)
   .selectUtxosFrom(utxos)
   .complete();

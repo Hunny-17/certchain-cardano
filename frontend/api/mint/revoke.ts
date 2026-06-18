@@ -22,7 +22,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { MeshTxBuilder, resolvePaymentKeyHash, mConStr1 } from "@meshsdk/core";
+import { MeshTxBuilder, resolvePaymentKeyHash, mConStr2 } from "@meshsdk/core";
 import type { UTxO } from "@meshsdk/core";
 import { z } from "zod";
 import { getCustodyWallet, getCustodyAddress, getProvider } from "../_lib/custody-wallet.js";
@@ -48,8 +48,8 @@ function getV3Config() {
   return { policyId, scriptAddress, refTxHash, refTxIndex };
 }
 
-const _scriptHash = "849a42464f285ca3e67e03d2fd974b497831a6ace8c11e1b85238f58";
-const _scriptSize = "1562";
+const _scriptHash = "b12bf31164f1290f7c7d67471422dd2932ac4f90cbaa9291d65ebeda";
+const _scriptSize = "1634";
 
 // ─── Input schema ─────────────────────────────────────────────────
 
@@ -339,7 +339,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .txIn(refUtxo.tx_hash, refUtxo.output_index, refUtxo.amount, scriptAddress)
       .spendingTxInReference(refTxHash, refTxIndex, _scriptSize, _scriptHash)
       .txInInlineDatumPresent()
-      .txInRedeemerValue(mConStr1([]), "Mesh"); // SpendAction::Revoke = Constructor 1
+      .txInRedeemerValue(mConStr2([]), "Mesh"); // SpendAction::Revoke = Constructor 2
 
     // Output ref NFT back to script address with revoked datum
     txBuilder

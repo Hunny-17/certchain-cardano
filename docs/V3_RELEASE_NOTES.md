@@ -33,6 +33,9 @@ V3 smart-contract operations remain Preprod-only. Mainnet validator deployment r
 | V3 volume mint latest | Pass | https://preprod.cardanoscan.io/transaction/f5c990db66f7f624a659e238b960da4161d225a84a1bf3ed7dd85dc2db9e1271 |
 | V3 volume revoke latest | Pass | https://preprod.cardanoscan.io/transaction/821d6072e7612b2e0f311433b8d02bf5aeb415c8dd9f81c879715bd29f26afc5 |
 | V2 fallback | Pass | `fca1ed625512835fab7770da1e9063d394bc75908284c031b591ee49f5250851` |
+| V3 burn-enabled script deploy | Pass | https://preprod.cardanoscan.io/transaction/5b31c9befbed9c79eec2dbb132705a08f64f317b0cc501a787a482590623c91f |
+| V3 burn test mint | Pass | https://preprod.cardanoscan.io/transaction/1422bdf8f0aa16f86ea5aae3db95b2ac8033c38384908c81b212fbda560a96a1 |
+| V3 burn | Pass | https://preprod.cardanoscan.io/transaction/21f15b723d5dc32afd80c334a8ec6a22aaa54e8f6e497dd1c879f9ed31468cef |
 
 ## Production Checks
 
@@ -41,6 +44,7 @@ V3 smart-contract operations remain Preprod-only. Mainnet validator deployment r
 - Production `/api/health`: HTTP 200.
 - Production `/api/mint/execute` OPTIONS: HTTP 204.
 - Production `/api/mint/update` OPTIONS: HTTP 204.
+- Production `/api/mint/burn`: tested with authenticated POST on Preprod.
 - Production error logs: no recent errors found during post-release check.
 - Required V3 env vars are present in Preview and Production.
 
@@ -52,7 +56,9 @@ Two runtime fixes were added after Preprod testing:
 - Revoke outputs top up lovelace to avoid `BabbageOutputTooSmallUTxO` when writing the larger revoked datum.
 - Issuer History hydrates from Supabase so V3 credentials keep their `asset_id` even when browser `localStorage` is stale or missing fields.
 - Revoke fetches fresh custody UTxOs from Blockfrost at request time so warm serverless invocations do not reuse stale wallet inputs.
-- The hardened validator now enforces static-field preservation and requires `status = "revoked"` for `SpendAction::Revoke`; `aiken check` reports 25 tests passing.
+- The hardened validator now enforces static-field preservation and requires `status = "revoked"` for `SpendAction::Revoke`; `aiken check` reports 26 tests passing.
+- The burn-enabled validator supports `SpendAction::Burn` without a continuing
+  output and `MintAction::BurnCert` for matched label-100/label-222 burns.
 - V2 minting is available through `/api/mint/execute-v2`; V3 minting is
   explicitly available through `/api/mint/execute-v3` while `/api/mint/execute`
   remains the deployed compatibility route.
@@ -72,4 +78,5 @@ Latest production smoke test:
 - Mint tx: `f5c990db66f7f624a659e238b960da4161d225a84a1bf3ed7dd85dc2db9e1271`
 - Revoke tx: `821d6072e7612b2e0f311433b8d02bf5aeb415c8dd9f81c879715bd29f26afc5`
 - Update tx: `c1bf45062b0671027df7c91359e044f1307eca9d1c0db927fa5aa54159adaa0b`
+- Burn tx: `21f15b723d5dc32afd80c334a8ec6a22aaa54e8f6e497dd1c879f9ed31468cef`
 - Verify result: V3 badge shown, datum status `revoked`, red `CREDENTIAL REVOKED` banner shown.

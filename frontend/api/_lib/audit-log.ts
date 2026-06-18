@@ -12,6 +12,10 @@ export type AuditEventType =
   | "update_success"
   | "update_failure"
   | "update_unauthorized"
+  | "burn_success"
+  | "burn_failure"
+  | "burn_db_error"
+  | "burn_unauthorized"
   | "validation_error"
   | "auth_error";
 

@@ -32,6 +32,8 @@ pub type MintAction {
 }
 
 pub type SpendAction {
+  // Spend the reference NFT without a continuing output so it can be burned
+  Burn
   // Spend the reference NFT to update datum fields (e.g. correct an error)
   Update
   // Spend the reference NFT to set status = "revoked"
@@ -86,6 +88,9 @@ pub fn validate_spend_action(
   new: CertDatum,
 ) -> Bool {
   when action is {
+    Burn ->
+      False
+
     Update ->
       static_fields_preserved(old, new)
 
@@ -167,13 +172,20 @@ validator certchain {
     when datum is {
       None -> False
       Some(cert) -> {
-        when continuing_datum(self, utxo) is {
-          None -> False
-          Some(new_cert) ->
-            and {
-              issuer_signed(self, cert.issuer_pkh),
-              validate_spend_action(cert, action, new_cert),
+        when action is {
+          Burn ->
+            issuer_signed(self, cert.issuer_pkh)
+
+          _ -> {
+            when continuing_datum(self, utxo) is {
+              None -> False
+              Some(new_cert) ->
+                and {
+                  issuer_signed(self, cert.issuer_pkh),
+                  validate_spend_action(cert, action, new_cert),
+                }
             }
+          }
         }
       }
     }

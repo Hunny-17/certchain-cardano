@@ -1,20 +1,20 @@
 /**
- * POST /api/mint/update - update a V3 CIP-68 reference datum.
+ * POST /api/mint/burn - burn a V3 CIP-68 credential pair.
  *
- * This endpoint is intentionally narrow for the Phase C.6 on-chain Update test:
- * it changes only the mutable `image` field and preserves all static fields.
+ * This is a narrow Phase C.6 endpoint for the on-chain Burn test. It spends the
+ * label-100 reference NFT UTxO without a continuing output and burns both the
+ * label-100 reference NFT and label-222 user NFT under the same policy.
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { BlockfrostProvider, MeshTxBuilder, resolvePaymentKeyHash, mConStr1 } from "@meshsdk/core";
+import { MeshTxBuilder, resolvePaymentKeyHash, mConStr0, mConStr1 } from "@meshsdk/core";
 import type { UTxO } from "@meshsdk/core";
 import { z } from "zod";
-import { getCustodyWallet, getCustodyAddress } from "../_lib/custody-wallet.js";
+import { getCustodyWallet, getCustodyAddress, getProvider } from "../_lib/custody-wallet.js";
 import { getServiceClient } from "../_lib/supabase-admin.js";
 import { insertAuditLog } from "../_lib/audit-log.js";
 import { requireUniversityMember, AuthError } from "../_lib/auth.js";
 import { mintRatelimit } from "../_lib/ratelimit.js";
-import { buildCertDatum } from "../_lib/cip68-datum.js";
 
 const CIP68_LABEL_100 = "000643b0";
 const CIP68_LABEL_222 = "000de140";
@@ -33,32 +33,23 @@ function getV3Config() {
 const _scriptHash = "b12bf31164f1290f7c7d67471422dd2932ac4f90cbaa9291d65ebeda";
 const _scriptSize = "1634";
 
-const UpdateSchema = z.object({
+const BurnSchema = z.object({
   asset_id: z.string().trim().min(1).max(300),
-  image: z.string().trim().min(1).max(200).optional(),
 });
 
-type UpdateRequest = z.infer<typeof UpdateSchema>;
+type BurnRequest = z.infer<typeof BurnSchema>;
 
 interface CertFields {
-  name: string;
-  image: string;
-  issuer: string;
-  issuerPkh: string;
-  issueDate: string;
-  certType: string;
-  recipientName: string;
   status: string;
 }
 
-function parseCertDatumCbor(cborHex: string): CertFields | null {
+function parseCertDatumStatus(cborHex: string): CertFields | null {
   try {
     const buf = Buffer.from(cborHex.replace(/^0x/, ""), "hex");
     let pos = 0;
     const read = (): number => buf[pos++];
 
     if (read() !== 0xd8 || read() !== 0x79) return null;
-
     const arrayHead = read();
     if ((arrayHead >> 5) !== 4) return null;
     const ai = arrayHead & 0x1f;
@@ -74,8 +65,7 @@ function parseCertDatumCbor(cborHex: string): CertFields | null {
     let idx = 0;
     while (indefinite ? buf[pos] !== 0xff : idx < count) {
       const typeHead = read();
-      const mt = typeHead >> 5;
-      if (mt !== 2) return null;
+      if ((typeHead >> 5) !== 2) return null;
       const lenAi = typeHead & 0x1f;
       let len: number;
       if (lenAi <= 23) len = lenAi;
@@ -88,18 +78,7 @@ function parseCertDatumCbor(cborHex: string): CertFields | null {
     }
 
     if (rawFields.length < 8) return null;
-
-    const utf8 = (b: Buffer) => b.toString("utf8");
-    return {
-      name:          utf8(rawFields[0]),
-      image:         utf8(rawFields[1]),
-      issuer:        utf8(rawFields[2]),
-      issuerPkh:     rawFields[3].toString("hex"),
-      issueDate:     utf8(rawFields[4]),
-      certType:      utf8(rawFields[5]),
-      recipientName: utf8(rawFields[6]),
-      status:        utf8(rawFields[7]),
-    };
+    return { status: rawFields[7].toString("utf8") };
   } catch {
     return null;
   }
@@ -130,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const { userId, membership } = authResult;
 
-  const { success: rlSuccess, reset: rlReset } = await mintRatelimit.limit(`update:${userId}`);
+  const { success: rlSuccess, reset: rlReset } = await mintRatelimit.limit(`burn:${userId}`);
   if (!rlSuccess) {
     const retryAfter = Math.ceil((rlReset - Date.now()) / 1000);
     res.setHeader("Retry-After", String(retryAfter));
@@ -138,9 +117,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  let body: UpdateRequest;
+  let body: BurnRequest;
   try {
-    body = UpdateSchema.parse(req.body);
+    body = BurnSchema.parse(req.body);
   } catch (err: any) {
     res.status(400).json({ error: "Invalid request body", details: err.errors ?? err.message });
     return;
@@ -164,15 +143,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (certRow.university_id !== membership.university_id) {
       await insertAuditLog({
-        event_type: "update_unauthorized",
+        event_type: "burn_unauthorized",
         ip_address: ip,
-        error_message: `University ${membership.university_id} tried to update cert owned by ${certRow.university_id}`,
+        error_message: `University ${membership.university_id} tried to burn cert owned by ${certRow.university_id}`,
       });
-      res.status(403).json({ error: "You can only update credentials issued by your institution" });
-      return;
-    }
-    if (certRow.status === "revoked") {
-      res.status(409).json({ error: "Credential is revoked and cannot be updated" });
+      res.status(403).json({ error: "You can only burn credentials issued by your institution" });
       return;
     }
 
@@ -187,10 +162,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const baseNameHex = assetNameHex.slice(CIP68_LABEL_222.length);
     const refAssetName = CIP68_LABEL_100 + baseNameHex;
+    const userAssetName = CIP68_LABEL_222 + baseNameHex;
+    const refAssetId = policyId + refAssetName;
 
     const BLOCKFROST_BASE = "https://cardano-preprod.blockfrost.io/api/v0";
     const utxoRes = await fetch(
-      `${BLOCKFROST_BASE}/addresses/${scriptAddress}/utxos/${policyId}${refAssetName}`,
+      `${BLOCKFROST_BASE}/addresses/${scriptAddress}/utxos/${refAssetId}`,
       { headers: { project_id: blockfrostKey } },
     );
     if (!utxoRes.ok) {
@@ -216,19 +193,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(500).json({ error: "Reference NFT UTxO has no inline datum" });
       return;
     }
-    const certFields = parseCertDatumCbor(refUtxo.inline_datum);
+    const certFields = parseCertDatumStatus(refUtxo.inline_datum);
     if (!certFields) {
       res.status(500).json({ error: "Failed to parse inline datum CBOR" });
-      return;
-    }
-    if (certFields.status === "revoked") {
-      res.status(409).json({ error: "Credential is already revoked on-chain" });
       return;
     }
 
     const wallet      = await getCustodyWallet();
     const custodyAddr = await getCustodyAddress();
-    const provider    = new BlockfrostProvider(blockfrostKey);
+    const provider    = getProvider();
     const custodyPkh  = resolvePaymentKeyHash(custodyAddr);
 
     const allUtxos = await provider.fetchAddressUTxOs(custodyAddr);
@@ -246,7 +219,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
     if (!userAssetUtxo) {
       res.status(409).json({
-        error: "User NFT is not currently held by the custody wallet, so this credential cannot be updated from the issuer portal.",
+        error: "User NFT is not currently held by the custody wallet, so this credential cannot be burned.",
       });
       return;
     }
@@ -261,23 +234,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error("No suitable collateral UTxO (>=5 ADA, pure-ADA) found in custody wallet");
     }
 
-    const updatedImage = body.image ?? `ipfs://updated-${Date.now().toString(36)}`;
-    const updatedDatum = buildCertDatum({
-      name:          certFields.name,
-      image:         updatedImage,
-      issuer:        certFields.issuer,
-      issuerPkh:     certFields.issuerPkh,
-      issueDate:     certFields.issueDate,
-      certType:      certFields.certType,
-      recipientName: certFields.recipientName,
-      status:        certFields.status,
-    });
-    const refOutputAmount = refUtxo.amount.map((a) =>
-      a.unit === "lovelace"
-        ? { ...a, quantity: String(Math.max(Number(a.quantity), 2_000_000)) }
-        : a,
-    );
-
     const txBuilder = new MeshTxBuilder({ fetcher: provider, submitter: provider });
 
     txBuilder.txInCollateral(
@@ -286,10 +242,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       collateral.output.amount,
       collateral.output.address,
     );
+
+    txBuilder.txIn(
+      userAssetUtxo.input.txHash,
+      userAssetUtxo.input.outputIndex,
+      userAssetUtxo.output.amount,
+      userAssetUtxo.output.address,
+    );
+
     const spendableUtxos = walletUtxos.filter(
       (u) =>
         !(u.input.txHash === collateral.input.txHash &&
-          u.input.outputIndex === collateral.input.outputIndex),
+          u.input.outputIndex === collateral.input.outputIndex) &&
+        !(u.input.txHash === userAssetUtxo.input.txHash &&
+          u.input.outputIndex === userAssetUtxo.input.outputIndex),
     );
 
     txBuilder
@@ -297,11 +263,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .txIn(refUtxo.tx_hash, refUtxo.output_index, refUtxo.amount, scriptAddress)
       .spendingTxInReference(refTxHash, refTxIndex, _scriptSize, _scriptHash)
       .txInInlineDatumPresent()
-      .txInRedeemerValue(mConStr1([]), "Mesh");
+      .txInRedeemerValue(mConStr0([]), "Mesh"); // SpendAction::Burn = Constructor 0
 
     txBuilder
-      .txOut(scriptAddress, refOutputAmount)
-      .txOutInlineDatumValue(updatedDatum, "Mesh");
+      .mintPlutusScriptV3()
+      .mint("-1", policyId, refAssetName)
+      .mintTxInReference(refTxHash, refTxIndex, _scriptSize, _scriptHash)
+      .mintReferenceTxInRedeemerValue(mConStr1([]), "Mesh"); // MintAction::BurnCert = Constructor 1
+
+    txBuilder
+      .mintPlutusScriptV3()
+      .mint("-1", policyId, userAssetName)
+      .mintTxInReference(refTxHash, refTxIndex, _scriptSize, _scriptHash)
+      .mintReferenceTxInRedeemerValue(mConStr1([]), "Mesh");
 
     txBuilder.requiredSignerHash(custodyPkh);
 
@@ -313,8 +287,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const signedTx = await wallet.signTx(unsignedTx);
     const txHash = await wallet.submitTx(signedTx);
 
+    const { error: dbUpdateErr } = await sb
+      .from("certificates")
+      .update({ status: "revoked" })
+      .eq("asset_id", body.asset_id);
+
+    if (dbUpdateErr) {
+      await insertAuditLog({
+        event_type: "burn_db_error",
+        tx_hash: txHash,
+        asset_id: body.asset_id,
+        institution: membership.university.name,
+        university_id: membership.university_id,
+        ip_address: ip,
+        error_message: dbUpdateErr.message,
+      });
+      res.status(207).json({
+        warning: "Burn tx submitted on-chain but DB update failed",
+        tx_hash: txHash,
+        asset_id: body.asset_id,
+        db_error: dbUpdateErr.message,
+        cardanoscan_url: `https://preprod.cardanoscan.io/transaction/${txHash}`,
+      });
+      return;
+    }
+
     await insertAuditLog({
-      event_type: "update_success",
+      event_type: "burn_success",
       tx_hash: txHash,
       asset_id: body.asset_id,
       institution: membership.university.name,
@@ -323,24 +322,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       request_body: {
         asset_id: body.asset_id,
         cert_title: certRow.cert_title,
-        image: updatedImage,
+        previous_status: certFields.status,
       },
     });
 
     res.status(200).json({
       tx_hash: txHash,
       asset_id: body.asset_id,
-      image: updatedImage,
+      ref_asset_id: refAssetId,
       cardanoscan_url: `https://preprod.cardanoscan.io/transaction/${txHash}`,
     });
   } catch (err: any) {
-    console.error("Update failed:", err);
+    console.error("Burn failed:", err);
     await insertAuditLog({
-      event_type: "update_failure",
+      event_type: "burn_failure",
       asset_id: (req.body as any)?.asset_id,
       ip_address: ip,
       error_message: err.message ?? String(err),
     });
-    res.status(500).json({ error: "Update failed. Please try again." });
+    res.status(500).json({ error: "Burn failed. Please try again." });
   }
 }

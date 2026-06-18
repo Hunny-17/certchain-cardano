@@ -209,3 +209,7 @@ test update_rejects_changed_static_field() {
     cert_with_type("Award"),
   )
 }
+
+test burn_is_handled_outside_continuing_datum_validation() {
+  !certchain.validate_spend_action(cert("active"), certchain.Burn, cert("active"))
+}
