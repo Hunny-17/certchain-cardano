@@ -1,0 +1,16 @@
+name = "hunny-17/swap-practice"
+version = "0.0.0"
+compiler = "v1.1.22"
+plutus = "v3"
+license = "Apache-2.0"
+description = "Token swap escrow practice validator for CertChain CIP-68 Phase A.5"
+
+[repository]
+user = "hunny-17"
+project = "swap-practice"
+platform = "github"
+
+[[dependencies]]
+name = "aiken-lang/stdlib"
+version = "v3.1.0"
+source = "github"
