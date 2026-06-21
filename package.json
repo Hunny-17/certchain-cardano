@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@harmoniclabs/pair": "^1.0.0",
-    "@meshsdk/core": "1.8.4",
+    "@meshsdk/core": "^1.9.1",
     "dotenv": "16.4.5"
   },
   "devDependencies": {

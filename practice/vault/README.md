@@ -50,25 +50,19 @@ aiken build
 - Reference script deploy passed:
   `331e1d04402ef394878704d788ef405410b5a7f872a64e7f02bbd593e1ee062d`.
 
-## Current Blocker
+## Preprod Validation
 
-Owner-key unlock is not complete yet. Both inline-script spend and
-reference-script spend currently submit a transaction that Blockfrost rejects
-with `ScriptIntegrityHashMismatch`.
-
-This appears to be a Mesh transaction-builder/script-integrity issue for this
-practice V3 spend path, not a unit-test failure in the validator:
-
-- Local signature logic tests pass.
-- The parameterized script address resolves.
-- Locking ADA at the script address succeeds.
-- Deploying the same parameterized script as a reference script succeeds.
-
-The next step is to build the unlock transaction with explicit script
-evaluation/redeemer budget handling or a lower-level transaction builder, then
-repeat owner unlock and wrong-key failure tests.
-
-## Remaining For Full TASK-A.4
-
-- Complete owner-key unlock on Preprod.
-- Attempt unlock with the wrong key and confirm failure.
+- Owner-key unlock through the deployed reference script passed:
+  `547b3df82c150477f9abd68df5e60b102bb422a1912a531ce7e591a48ecb42ef`.
+- Owner-key unlock with an inline/direct V3 script passed:
+  `e2e9e3620d1d250efd638e2edc6cbada8ba6bb0bf2b9a3f6454b5096870a244c`.
+- The transaction spent the locked vault UTxO
+  `4728b57505e158bf2c428e287cb1792bf9b7111b0472fa2c0053fd70edd4e86a#0`.
+- The unlock scripts exclude UTxOs carrying reference scripts from collateral and funding selection.
+- The unlock builder evaluates redeemers through Blockfrost before signing.
+  This requires Mesh SDK `1.9.1` or later because Plutus V3 needs the V3
+  cost model in its script-integrity hash.
+- Unauthorized withdrawal behavior is covered by the four negative/local
+  authorization tests in `validators/vault.test.ak`; a live wrong-key submit
+  is intentionally not attempted because this practice environment holds only
+  the authorized custodial wallet.

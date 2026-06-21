@@ -27,6 +27,7 @@ if (!target) {
 const walletUtxos = await provider.fetchAddressUTxOs(address);
 const collateral = walletUtxos.find(
   (u) =>
+    !u.output.referenceScript &&
     u.output.amount.length === 1 &&
     u.output.amount[0].unit === "lovelace" &&
     Number(u.output.amount[0].quantity) >= 5_000_000,
@@ -35,13 +36,18 @@ if (!collateral) throw new Error("No pure-ADA collateral UTxO >= 5 ADA found");
 
 const spendable = walletUtxos.filter(
   (u) =>
+    !u.output.referenceScript &&
     !(u.input.txHash === collateral.input.txHash &&
       u.input.outputIndex === collateral.input.outputIndex) &&
     !(u.input.txHash === deployment.refTxHash &&
       u.input.outputIndex === deployment.refTxIndex),
 );
 
-const txBuilder = new MeshTxBuilder({ fetcher: provider, submitter: provider });
+const txBuilder = new MeshTxBuilder({
+  fetcher: provider,
+  submitter: provider,
+  evaluator: provider,
+});
 txBuilder.txInCollateral(
   collateral.input.txHash,
   collateral.input.outputIndex,

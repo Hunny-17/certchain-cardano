@@ -2,16 +2,13 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  applyCborEncoding,
+  applyParamsToScript,
   BlockfrostProvider,
   MeshWallet,
   resolvePaymentKeyHash,
-} from "@meshsdk/core";
-import {
-  applyParamsToScript,
-  deserializePlutusScript,
   resolvePlutusScriptAddress,
-} from "@meshsdk/core-csl";
+  resolveScriptHash,
+} from "@meshsdk/core";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dir, "../../..");
@@ -62,9 +59,9 @@ export function getVaultScript(ownerPkh) {
   if (!validator) throw new Error("vault.vault.spend not found in plutus.json");
 
   const parameterized = applyParamsToScript(validator.compiledCode, [ownerPkh], "Mesh");
-  const compiledCode = applyCborEncoding(parameterized);
+  const compiledCode = parameterized;
   const scriptAddress = resolvePlutusScriptAddress({ code: compiledCode, version: "V3" }, 0);
-  const scriptHash = deserializePlutusScript(compiledCode, "V3").hash().to_hex();
+  const scriptHash = resolveScriptHash(compiledCode, "V3");
   return {
     rawCode: validator.compiledCode,
     parameterizedCode: parameterized,

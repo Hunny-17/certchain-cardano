@@ -5,7 +5,7 @@ const txHashArg = process.argv[2];
 const outputIndexArg = process.argv[3];
 
 const { provider, wallet, address, ownerPkh } = await getWalletContext();
-const { parameterizedCode, scriptAddress } = getVaultScript(ownerPkh);
+const { compiledCode, scriptAddress } = getVaultScript(ownerPkh);
 
 const scriptUtxos = await provider.fetchAddressUTxOs(scriptAddress);
 const target = scriptUtxos.find((u) => {
@@ -23,6 +23,7 @@ if (!target) {
 const walletUtxos = await provider.fetchAddressUTxOs(address);
 const collateral = walletUtxos.find(
   (u) =>
+    !u.output.referenceScript &&
     u.output.amount.length === 1 &&
     u.output.amount[0].unit === "lovelace" &&
     Number(u.output.amount[0].quantity) >= 5_000_000,
@@ -31,11 +32,16 @@ if (!collateral) throw new Error("No pure-ADA collateral UTxO >= 5 ADA found");
 
 const spendable = walletUtxos.filter(
   (u) =>
+    !u.output.referenceScript &&
     !(u.input.txHash === collateral.input.txHash &&
       u.input.outputIndex === collateral.input.outputIndex),
 );
 
-const txBuilder = new MeshTxBuilder({ fetcher: provider, submitter: provider });
+const txBuilder = new MeshTxBuilder({
+  fetcher: provider,
+  submitter: provider,
+  evaluator: provider,
+});
 txBuilder.txInCollateral(
   collateral.input.txHash,
   collateral.input.outputIndex,
@@ -46,7 +52,7 @@ txBuilder.txInCollateral(
 txBuilder
   .spendingPlutusScriptV3()
   .txIn(target.input.txHash, target.input.outputIndex, target.output.amount, target.output.address)
-  .txInScript(parameterizedCode)
+  .txInScript(compiledCode)
   .txInInlineDatumPresent()
   .txInRedeemerValue(mConStr0([]), "Mesh")
   .requiredSignerHash(ownerPkh);
