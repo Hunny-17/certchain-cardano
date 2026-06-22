@@ -1,4 +1,5 @@
 use aiken/collection/list
+use cardano/address
 use cardano/assets
 use cardano/transaction
 use swap
@@ -72,5 +73,122 @@ test missing_buyer_signature_is_rejected() {
   !swap.signed_by(
     transaction.Transaction { ..transaction.placeholder, extra_signatories: [seller] },
     buyer,
+  )
+}
+
+fn nft_value(asset_name: ByteArray) {
+  assets.from_lovelace(2_000_000)
+    |> assets.add(nft_policy, asset_name, 1)
+}
+
+test escrow_token_set_is_preserved_for_the_buyer() {
+  swap.preserves_escrow_tokens(nft_value("locked-nft"), nft_value("locked-nft"), nft_policy)
+}
+
+test different_nft_under_the_same_policy_is_rejected() {
+  !swap.preserves_escrow_tokens(nft_value("locked-nft"), nft_value("decoy-nft"), nft_policy)
+}
+
+const escrow_script_hash =
+  #"99999999999999999999999999999999999999999999999999999999"
+
+const own_ref = transaction.OutputReference {
+  transaction_id: transaction.placeholder.id,
+  output_index: 0,
+}
+
+fn key_output(pkh, value) -> transaction.Output {
+  transaction.Output {
+    address: address.from_verification_key(pkh),
+    value,
+    datum: transaction.NoDatum,
+    reference_script: None,
+  }
+}
+
+fn continuing_output(value, datum) -> transaction.Output {
+  transaction.Output {
+    address: address.from_script(escrow_script_hash),
+    value,
+    datum: transaction.InlineDatum(datum),
+    reference_script: None,
+  }
+}
+
+fn escrow_input() -> transaction.Input {
+  transaction.Input {
+    output_reference: own_ref,
+    output: transaction.Output {
+      address: address.from_script(escrow_script_hash),
+      value: nft_value("locked-nft"),
+      datum: transaction.InlineDatum(escrow(3_000_000)),
+      reference_script: None,
+    },
+  }
+}
+
+fn buy_transaction(paid: Int, buyer_value, signatories) -> transaction.Transaction {
+  transaction.Transaction {
+    ..transaction.placeholder,
+    inputs: [escrow_input()],
+    outputs: [
+      key_output(seller, assets.from_lovelace(paid)),
+      key_output(buyer, buyer_value),
+    ],
+    extra_signatories: signatories,
+  }
+}
+
+fn update_transaction(next, continuation_value) -> transaction.Transaction {
+  transaction.Transaction {
+    ..transaction.placeholder,
+    inputs: [escrow_input()],
+    outputs: [continuing_output(continuation_value, next)],
+    extra_signatories: [seller],
+  }
+}
+
+test buy_accepts_exact_escrow_nft_and_price() {
+  swap.validate_swap(
+    Some(escrow(3_000_000)),
+    swap.Buy { buyer },
+    own_ref,
+    buy_transaction(3_000_000, nft_value("locked-nft"), [buyer]),
+  )
+}
+
+test buy_rejects_underpayment_in_full_context() {
+  !swap.validate_swap(
+    Some(escrow(3_000_000)),
+    swap.Buy { buyer },
+    own_ref,
+    buy_transaction(2_000_000, nft_value("locked-nft"), [buyer]),
+  )
+}
+
+test buy_rejects_missing_buyer_signature_in_full_context() {
+  !swap.validate_swap(
+    Some(escrow(3_000_000)),
+    swap.Buy { buyer },
+    own_ref,
+    buy_transaction(3_000_000, nft_value("locked-nft"), [seller]),
+  )
+}
+
+test buy_rejects_same_policy_decoy_nft_in_full_context() {
+  !swap.validate_swap(
+    Some(escrow(3_000_000)),
+    swap.Buy { buyer },
+    own_ref,
+    buy_transaction(3_000_000, nft_value("decoy-nft"), [buyer]),
+  )
+}
+
+test update_rejects_same_policy_decoy_nft_in_full_context() {
+  !swap.validate_swap(
+    Some(escrow(3_000_000)),
+    swap.UpdatePrice { new_price: 4_000_000 },
+    own_ref,
+    update_transaction(escrow(4_000_000), nft_value("decoy-nft")),
   )
 }

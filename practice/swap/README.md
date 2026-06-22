@@ -15,16 +15,19 @@ SwapDatum { seller, price, nft_policy }
 SwapRedeemer { Buy { buyer }, UpdatePrice { new_price }, Cancel }
 ```
 
-- `Buy` requires the buyer signature, the seller payment, an NFT from the
-datum policy at the buyer address, and no continuing escrow output.
+- `Buy` requires the buyer signature, the seller payment, the exact escrowed
+token set from the datum policy at the buyer address, and no continuing escrow
+output.
 - `UpdatePrice` requires the seller signature and a continuing output whose
-seller and NFT policy are unchanged. Only the positive price may change.
+seller, NFT policy, and exact escrowed policy token set are unchanged. Only the
+positive price may change.
 - `Cancel` lets the seller recover the NFT.
 
 ## Tests
 
-`aiken check` passes 11 unit tests covering positive prices, NFT policy
-matching, datum tampering, price updates, and buyer-signature authorization.
+`aiken check` passes 18 unit tests covering positive prices, exact NFT token
+preservation, datum tampering, price updates, buyer-signature authorization,
+and full validator transaction contexts.
 
 ```powershell
 aiken check
@@ -44,6 +47,14 @@ validator. The node did not assign a transaction id because submission failed.
 - Buyer-funded 3 ADA purchase succeeded:
   `5a52af0e2ec30fbb55953bfa56ea09d8d0623173d8d00b1fd1945ada94411bdc`.
   It spent the final escrow UTxO and sent the NFT to the separate buyer address.
+- Post-fix exact-token regression NFT mint:
+  `58e1b2109d9d56831423e73ebaab6536618cc1f36b0a5a53b92380d9079a756b`.
+- Post-fix escrow lock with the corrected validator:
+  `871b21cc00a0f9e2b8dd7d7ada69b6ff1342a7a384d4279a0eef79203e82ec24`.
+- Post-fix 3 ADA purchase succeeded:
+  `b82c8f28f5620dbdc2837e4d259552fb2b82c264f56512238ed56ef74c18822f`.
+  It spent the corrected escrow UTxO and sent the exact escrowed NFT to the
+  buyer address.
 
 ## Scripts
 
@@ -62,6 +73,12 @@ payment check. The final validator requires the buyer signature and the final
 Preprod flow uses a separate, funded buyer key. This is why the negative
 underpayment test reaches the validator and fails before the correct purchase
 is submitted.
+
+The follow-up review also exposed a same-policy NFT substitution risk. Checking
+only `has_any_nft` allowed a decoy NFT under the same policy to satisfy the
+buyer or continuation output. The validator now compares the exact token map
+for the datum policy between the escrow input and the buyer or continuation
+output.
 
 The purchase runner uses an explicit bounded Plutus V3 execution budget. This
 avoids a small Blockfrost evaluator underestimation observed on Preprod.
