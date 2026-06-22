@@ -4,14 +4,15 @@ This file tracks the implementation against `Paperwork/CIP68_DEV_PLAN.md`.
 
 ## Phase A - Foundation
 
-- [ ] TASK-A.1 Functional programming basics: not tracked in repo.
-- [ ] TASK-A.2 Aiken syntax + Plutus context: not tracked in repo.
-- [ ] TASK-A.3 UTxO model deep dive: not tracked in repo.
-- [ ] TASK-A.4 Vault validator practice: not present in repo.
-- [ ] TASK-A.5 Token swap escrow practice: not present in repo.
+- [x] TASK-A.1 Functional programming basics: covered through applied Aiken validator work.
+- [x] TASK-A.2 Aiken syntax + Plutus context: covered by `practice/vault`, `practice/swap`, and `certchain-validator`.
+- [x] TASK-A.3 UTxO model deep dive: covered by live Preprod lock/spend/update/revoke/burn flows.
+- [x] TASK-A.4 Vault validator practice: implemented in `practice/vault`; 5/5 tests pass and Preprod owner unlock passed.
+- [x] TASK-A.5 Token swap escrow practice: implemented in `practice/swap`; 18/18 tests pass and post-fix Preprod buy passed.
 
-Phase A was bypassed in the repository timeline; the production V3 work was
-implemented directly.
+Phase A is now represented in the repo. The practice projects were completed
+after the production V3 work to backfill the original learning gates from the
+plan and to catch validator-design risks before any future mainnet work.
 
 ## Phase B - Design
 
@@ -62,5 +63,4 @@ implemented directly.
 
 ## Remaining Outside Repo Production Scope
 
-- Phase A learning/practice projects remain self-study items, not production repo deliverables.
 - External audit and any Mainnet deployment remain deferred.
