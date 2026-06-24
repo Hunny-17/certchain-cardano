@@ -1,16 +1,13 @@
-﻿/**
+/**
  * api/_lib/custody-wallet.ts
- * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
- * Loads the CertChain custody wallet from environment variables
- * and exposes a singleton MeshWallet instance for serverless
- * functions to mint and sign on Preprod.
+ * Loads the CertChain custody wallet from environment variables and exposes a
+ * singleton MeshWallet instance for serverless functions to mint and sign on
+ * Preprod.
  *
- * âš ï¸ SECURITY: This file is `api/_lib/*` which Vercel scopes to
- * server-only â€” it is NEVER bundled into the browser. The mnemonic
- * stays in env. Do not import this file from src/.
- * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ * SECURITY: This file is `api/_lib/*` which Vercel scopes to server-only. It is
+ * NEVER bundled into the browser. The mnemonic stays in env. Do not import this
+ * file from src/.
  */
-
 import { BlockfrostProvider, MeshWallet } from '@meshsdk/core';
 
 // Module-level singletons (cached across warm Vercel invocations)
@@ -45,7 +42,7 @@ export function getProvider(): BlockfrostProvider {
  * - Initialises MeshWallet with Preprod network (networkId = 0)
  * - Verifies loaded address matches CUSTODY_WALLET_ADDRESS env var
  *
- * Throws on any mismatch â€” fail fast > silent wrong wallet.
+ * Throws on any mismatch — fail fast > silent wrong wallet.
  */
 export async function getCustodyWallet(): Promise<MeshWallet> {
   if (_wallet) return _wallet;
@@ -75,7 +72,7 @@ export async function getCustodyWallet(): Promise<MeshWallet> {
   });
 
 
-  // Verify address consistency â€” guards against env drift / wrong mnemonic
+  // Verify address consistency — guards against env drift / wrong mnemonic
   const loaded = await wallet.getChangeAddress();
   const expected = process.env.CUSTODY_WALLET_ADDRESS;
 
@@ -93,7 +90,7 @@ export async function getCustodyWallet(): Promise<MeshWallet> {
 }
 
 /**
- * Convenience accessor â€” returns the base address (bech32).
+ * Convenience accessor — returns the base address (bech32).
  * Safe to log; addresses are public on-chain.
  */
 export async function getCustodyAddress(): Promise<string> {

@@ -57,7 +57,6 @@ export default function BulkIssueView({
   const [dragActive, setDragActive] = useState(false);
   const abortRef = useRef(false);
   const [isAborting, setIsAborting] = useState(false);
-  const processingStartRef = useRef<number>(0);
 
   // ----------------------------------------------------------------------------
   // Phase: input → preview
@@ -75,7 +74,7 @@ export default function BulkIssueView({
     const result: CsvRow[] = [];
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(",").map((v) => v.trim());
-      const row: any = {};
+      const row: Record<string, string> = {};
       headers.forEach((h, j) => {
         row[h] = values[j] || "";
       });
@@ -137,7 +136,6 @@ export default function BulkIssueView({
   const startProcessing = () => {
     abortRef.current = false;
     setIsAborting(false);
-    processingStartRef.current = Date.now();
     const valid = rows.filter((r) => r.errors.length === 0);
     setProcessed(
       valid.map((row) => ({ row, status: "queued" as const })),
@@ -165,8 +163,8 @@ export default function BulkIssueView({
 
     // Skip already-done rows (happens on retry pass)
     if (processed[activeIdx]?.status === "done") {
-      setActiveIdx((i) => i + 1);
-      return;
+      const t = setTimeout(() => setActiveIdx((i) => i + 1), 0);
+      return () => clearTimeout(t);
     }
 
     let cancelled = false;
@@ -234,7 +232,6 @@ export default function BulkIssueView({
   const handleRetry = () => {
     abortRef.current = false;
     setIsAborting(false);
-    processingStartRef.current = Date.now();
     setProcessed((prev) =>
       prev.map((p) =>
         p.status === "error"
@@ -446,18 +443,9 @@ export default function BulkIssueView({
     const total = processed.length;
     const progress = Math.round((settledCount / total) * 100);
 
-    // Adaptive ETA: use actual avg after 2 settled rows, else fixed 65s/row
     const SECONDS_PER_MINT = 65;
-    let etaText: string;
-    if (settledCount >= 2 && processingStartRef.current > 0) {
-      const elapsed = (Date.now() - processingStartRef.current) / 1000;
-      const avgPerRow = elapsed / settledCount;
-      const etaSecs = Math.round(queuedCount * avgPerRow);
-      etaText = queuedCount === 0 ? "Almost done" : etaSecs < 60 ? `~${etaSecs}s` : `~${Math.ceil(etaSecs / 60)} min`;
-    } else {
-      const etaSecs = queuedCount * SECONDS_PER_MINT;
-      etaText = queuedCount === 0 ? "Almost done" : etaSecs < 60 ? `~${etaSecs}s` : `~${Math.ceil(etaSecs / 60)} min`;
-    }
+    const etaSecs = queuedCount * SECONDS_PER_MINT;
+    const etaText = queuedCount === 0 ? "Almost done" : etaSecs < 60 ? `~${etaSecs}s` : `~${Math.ceil(etaSecs / 60)} min`;
 
     return (
       <div>

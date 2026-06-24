@@ -88,7 +88,7 @@ export async function revokeCredential(assetId: string): Promise<RevokeSuccess> 
     return data as RevokeSuccess;
   } catch (e: unknown) {
     if (e instanceof Error && e.name === "AbortError") {
-      throw new Error("Revoke timed out after 90s. Check Cardanoscan manually.");
+      throw new Error("Revoke timed out after 90s. Check Cardanoscan manually.", { cause: e });
     }
     throw e;
   } finally {
@@ -133,7 +133,7 @@ export async function mintCertificate(
     return { ...(data as MintSuccess), version };
   } catch (e: unknown) {
     if (e instanceof Error && e.name === "AbortError") {
-      throw new Error("Mint timed out after 90s. Check Cardanoscan manually.");
+      throw new Error("Mint timed out after 90s. Check Cardanoscan manually.", { cause: e });
     }
     throw e;
   } finally {

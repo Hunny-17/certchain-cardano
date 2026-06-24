@@ -24,7 +24,6 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import {
   MeshTxBuilder,
   BlockfrostProvider,
-  applyCborEncoding,
   resolvePaymentKeyHash,
 } from "@meshsdk/core";
 import { mConStr0 } from "@meshsdk/core";

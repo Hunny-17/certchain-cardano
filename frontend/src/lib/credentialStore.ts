@@ -37,6 +37,9 @@ export interface MockCredentialInput {
     student_id_hash: string
     dob_hash: string
   }
+  _assetId?: string
+  _claimCodeShown?: boolean
+  _real?: boolean
   _version?: 'v2' | 'v3'
 }
 

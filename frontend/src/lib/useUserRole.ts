@@ -30,10 +30,8 @@ export function useUserRole(): UserRole | null {
 
   useEffect(() => {
     // In-tab role changes (e.g. user clicks Switch button in RoleBadge)
-  const handleRoleChange = () => {
-  const newRole = getUserRole();
-    console.log('[useUserRole] ROLE_CHANGE_EVENT received, new role:', newRole);
-        setRole(newRole);
+    const handleRoleChange = () => {
+      setRole(getUserRole());
     };
 
     // Cross-tab role changes (e.g. user changes role in another browser tab)

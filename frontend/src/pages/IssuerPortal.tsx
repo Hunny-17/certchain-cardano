@@ -162,7 +162,7 @@ export default function IssuerPortal() {
         _claimCodeShown: true,
         _assetId: result.asset_id,
         _version: mintVersion,
-      } as any);
+      });
 
       setCurrentTxHash(result.tx_hash);
       setClaimCode(result.claim_code);
